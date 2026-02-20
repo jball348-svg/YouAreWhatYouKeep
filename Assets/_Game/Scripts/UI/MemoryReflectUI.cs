@@ -178,27 +178,24 @@ public class MemoryReflectUI : MonoBehaviour
     // -------------------------------------------------------
     // FORGET PRESSED
     // -------------------------------------------------------
-    private void OnForgetPressed()
+private void OnForgetPressed()
+{
+    if (selectedMemory == null) return;
+
+    if (isReplaceMode && pendingMemory != null)
     {
-        if (selectedMemory == null) return;
-
-        if (isReplaceMode && pendingMemory != null)
-        {
-            // Replace: forget selected, keep pending
-            MemorySystem.Instance.ReplaceMemory(selectedMemory, pendingMemory);
-            selectedMemory = null;
-            pendingMemory = null;
-            isReplaceMode = false;
-
-            // Close the screen and return to play
-            UIManager.Instance.CloseReflectScreen();
-        }
-        else
-        {
-            // Normal forget
-            MemorySystem.Instance.ForgetMemory(selectedMemory);
-            selectedMemory = null;
-            detailPanel.SetActive(false);
-        }
+        MemorySystem.Instance.ReplaceMemory(selectedMemory, pendingMemory);
+        selectedMemory = null;
+        pendingMemory = null;
+        isReplaceMode = false;
+        UIManager.Instance.CloseReflectScreen();
     }
+    else
+    {
+        // Forget and close — don't leave player on a broken state
+        MemorySystem.Instance.ForgetMemory(selectedMemory);
+        selectedMemory = null;
+        UIManager.Instance.CloseReflectScreen();
+    }
+}
 }

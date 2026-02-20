@@ -117,35 +117,32 @@ private void OnTriggerExit(Collider other)
     playerInRange = false;
     lingerTimer = 0f;
 
-    // Tell UI to hide prompt
     UIManager.Instance?.HideMomentPrompt();
 }
 
     // -------------------------------------------------------
     // EXPERIENCE THE MOMENT
     // -------------------------------------------------------
-    private void ExperienceMoment()
+private void ExperienceMoment()
+{
+    if (memoryData == null)
     {
-        if (memoryData == null)
-        {
-            Debug.LogWarning($"[MomentTrigger] No MemoryData assigned on {gameObject.name}");
-            return;
-        }
-
-        // Offer to the memory system
-        MemorySystem.Instance?.OfferMemory(memoryData);
-
-        OnMomentExperienced?.Invoke();
-
-        if (consumeOnUse)
-        {
-            hasBeenUsed = true;
-            // Fade/disable world object — visual handled by WorldEchoSystem in Phase 7
-            // For now just disable the trigger
-            gameObject.SetActive(false);
-        }
+        Debug.LogWarning($"[MomentTrigger] No MemoryData assigned on {gameObject.name}");
+        return;
     }
 
+    // Hide the prompt immediately when moment is experienced
+    UIManager.Instance?.HideMomentPrompt();
+
+    MemorySystem.Instance?.OfferMemory(memoryData);
+    OnMomentExperienced?.Invoke();
+
+    if (consumeOnUse)
+    {
+        hasBeenUsed = true;
+        gameObject.SetActive(false);
+    }
+}
     // -------------------------------------------------------
     // EDITOR VISUALISATION
     // Draws the trigger radius as a sphere in the Scene view

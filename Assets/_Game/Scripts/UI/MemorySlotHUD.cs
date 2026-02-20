@@ -39,11 +39,17 @@ public class MemorySlotHUD : MonoBehaviour
     // -------------------------------------------------------
     // START
     // -------------------------------------------------------
-    private void Start()
-    {
-        BuildSlots();
-        Refresh();
-    }
+private void Start()
+{
+    // Small delay ensures MemorySystem singleton is ready
+    Invoke(nameof(InitialBuild), 0.1f);
+}
+
+private void InitialBuild()
+{
+    BuildSlots();
+    Refresh();
+}
 
     private void Update()
     {
