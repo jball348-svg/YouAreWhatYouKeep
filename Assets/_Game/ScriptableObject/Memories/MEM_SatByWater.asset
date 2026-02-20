@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 495bafa10f389a84fa4173b2977e6a01, type: 3}
+  m_Name: MEM_SatByWater
+  m_EditorClassIdentifier: Assembly-CSharp::MemoryData
+  memoryTitle: Sat by the water alone
+  memoryDescription: The sound of it was enough. You didn't need anything else
+  category: 7
+  emotionalWeight: 0.6
+  worldTintContribution: {r: 0.504717, g: 0.8704037, b: 1, a: 1}
+  ambientLayer: {fileID: 0}
+  reinforcedTraits: 
+  erodedTraits: 
+  memoryIcon: {fileID: 0}
+  memoryColour: {r: 0.8, g: 0.75, b: 0.7, a: 1}
