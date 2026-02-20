@@ -96,28 +96,30 @@ public class MomentTrigger : MonoBehaviour
     // -------------------------------------------------------
     // TRIGGER DETECTION
     // -------------------------------------------------------
-    private void OnTriggerEnter(Collider other)
-    {
-        if (hasBeenUsed) return;
-        if (!other.CompareTag("Player")) return;
+private void OnTriggerEnter(Collider other)
+{
+    if (hasBeenUsed) return;
+    if (!other.CompareTag("Player")) return;
 
-        playerInRange = true;
-        lingerTimer = 0f;
+    playerInRange = true;
+    lingerTimer = 0f;
 
-        OnPlayerEnterRange?.Invoke(promptText);
-        Debug.Log($"[MomentTrigger] Player in range of: {memoryData?.memoryTitle}");
-    }
+    // Tell UI to show prompt
+    UIManager.Instance?.ShowMomentPrompt(promptText);
 
-    private void OnTriggerExit(Collider other)
-    {
-        if (!other.CompareTag("Player")) return;
+    Debug.Log($"[MomentTrigger] Player in range of: {memoryData?.memoryTitle}");
+}
 
-        playerInRange = false;
-        isLingering = false;
-        lingerTimer = 0f;
+private void OnTriggerExit(Collider other)
+{
+    if (!other.CompareTag("Player")) return;
 
-        OnPlayerExitRange?.Invoke();
-    }
+    playerInRange = false;
+    lingerTimer = 0f;
+
+    // Tell UI to hide prompt
+    UIManager.Instance?.HideMomentPrompt();
+}
 
     // -------------------------------------------------------
     // EXPERIENCE THE MOMENT
