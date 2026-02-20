@@ -27,7 +27,7 @@ public class GameManager : MonoBehaviour
         Ending          // Final reflection sequence
     }
 
-    public GameState CurrentState { get; private set; } = GameState.Booting;
+    public GameState CurrentState { get; private set; } = GameState.Playing;
 
     // -------------------------------------------------------
     // EVENTS
