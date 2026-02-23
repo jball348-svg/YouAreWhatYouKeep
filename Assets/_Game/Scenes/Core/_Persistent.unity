@@ -119,6 +119,142 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!114 &29569255 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8268650809299844853, guid: fff54b1210697404bb07dd4884999014, type: 3}
+  m_PrefabInstance: {fileID: 7404714949443265060}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+--- !u!4 &59341093 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2003204954384837939, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
+  m_PrefabInstance: {fileID: 6311624992776623782}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &165086608
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 165086609}
+  - component: {fileID: 165086610}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &165086609
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 165086608}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 59341093}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &165086610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 165086608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b28a04961dcc16049add2a40ea98624f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  baseAmbientClip: {fileID: 8300000, guid: 75843c18c87a7404d8392b8566181cc9, type: 3}
+  baseAmbientVolume: 0.15
+  categoryLayers:
+  - category: 2
+    clip: {fileID: 8300000, guid: 685ef215de08e2848a4933e7881c53a8, type: 3}
+  - category: 3
+    clip: {fileID: 8300000, guid: 136e8202658792041b1b58c572d2f85a, type: 3}
+  - category: 7
+    clip: {fileID: 8300000, guid: 4ff2502bb12ccac40b5977f992d80532, type: 3}
+  - category: 6
+    clip: {fileID: 8300000, guid: ab9b744aef750834fa2442c87d76d5bd, type: 3}
+  - category: 1
+    clip: {fileID: 8300000, guid: 74a29c0696c318c4a813a61f054fa05f, type: 3}
+  fadeDuration: 3
+  maxLayerVolume: 0.4
+  momentStingClip: {fileID: 8300000, guid: 0f74417e514076842b8ab88026e96736, type: 3}
+  momentStingVolume: 0.6
+--- !u!1 &274750785
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 274750786}
+  - component: {fileID: 274750787}
+  m_Layer: 0
+  m_Name: EmotionalResponseSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &274750786
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 274750785}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 59341093}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &274750787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 274750785}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6112d085cbc33194488857a3afd05cd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EmotionalResponseSystem
+  postProcessVolume: {fileID: 29569255}
+  baseSaturation: -15
+  baseContrast: 5
+  baseBloomIntensity: 0.3
+  baseVignetteIntensity: 0.25
+  baseColourFilter: {r: 1, g: 1, b: 1, a: 1}
+  peakSaturation: 20
+  peakContrast: 15
+  peakBloomIntensity: 0.8
+  peakVignetteIntensity: 0.35
+  momentBloomSpike: 1.5
+  momentBloomDuration: 1.8
+  momentTimeDilation: 0.75
+  momentTimeDilationDuration: 0.8
+  transitionSpeed: 0.8
 --- !u!1001 &6311624992776623782
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -173,7 +309,13 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 2003204954384837939, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 165086609}
+    - targetCorrespondingSourceObject: {fileID: 2003204954384837939, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 274750786}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
 --- !u!1001 &7404714949443265060
