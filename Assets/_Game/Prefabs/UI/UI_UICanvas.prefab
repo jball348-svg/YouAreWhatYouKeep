@@ -531,8 +531,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MemorySlotHUD
   slotContainer: {fileID: 5730660721219541976}
   slotDotPrefab: {fileID: 3774880017785687637, guid: 65040e9811a7b604ca14272ef6fdfd7e, type: 3}
-  filledColour: {r: 0.9, g: 0.85, b: 0.75, a: 0.9}
-  emptyColour: {r: 0.9, g: 0.85, b: 0.75, a: 0.2}
+  filledColour: {r: 1, g: 1, b: 1, a: 1}
+  emptyColour: {r: 1, g: 1, b: 1, a: 0.23529412}
   colourTransitionSpeed: 4
 --- !u!1 &1867066361483240479
 GameObject:

@@ -1,59 +1,62 @@
 // MemorySlotHUD.cs
-// A minimal HUD element showing memory slot usage.
-// Deliberately understated — dots or small shapes, not a bar.
-// The player should be AWARE of their slots, not managed by them.
-// Attach to the MemorySlotHUD object under HUD.
-
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
 public class MemorySlotHUD : MonoBehaviour
 {
-    // -------------------------------------------------------
-    // REFERENCES
-    // -------------------------------------------------------
     [Header("References")]
-    [Tooltip("Parent object that slot indicators are spawned inside")]
     public Transform slotContainer;
-
-    [Tooltip("Prefab for a single slot dot — a simple Image")]
     public GameObject slotDotPrefab;
 
-    // -------------------------------------------------------
-    // VISUALS
-    // -------------------------------------------------------
     [Header("Colours")]
-    public Color filledColour = new Color(0.9f, 0.85f, 0.75f, 0.9f);   // warm cream
-    public Color emptyColour  = new Color(0.9f, 0.85f, 0.75f, 0.2f);   // same, very faint
+    public Color filledColour = new Color(1f, 1f, 1f, 0.9f);
+    public Color emptyColour  = new Color(1f, 1f, 1f, 0.2f);
 
     [Header("Feel")]
     public float colourTransitionSpeed = 4f;
 
-    // -------------------------------------------------------
-    // PRIVATE
-    // -------------------------------------------------------
     private List<Image> slotDots = new List<Image>();
     private List<Color> targetColours = new List<Color>();
 
-    // -------------------------------------------------------
-    // START
-    // -------------------------------------------------------
-private void Start()
-{
-    // Small delay ensures MemorySystem singleton is ready
-    Invoke(nameof(InitialBuild), 0.1f);
-}
+    private void Start()
+    {
+        // Delay to ensure MemorySystem singleton is ready
+        Invoke(nameof(InitialBuild), 0.15f);
+    }
 
-private void InitialBuild()
-{
-    BuildSlots();
-    Refresh();
-}
+    private void InitialBuild()
+    {
+        BuildSlots();
+
+        // Subscribe here instead of OnEnable — guarantees MemorySystem exists
+        if (MemorySystem.Instance != null)
+        {
+            MemorySystem.Instance.OnMemoriesChanged += Refresh;
+            MemorySystem.Instance.OnMemoryKept += _ => Refresh();
+            MemorySystem.Instance.OnMemoryForgotten += _ => Refresh();
+        }
+        else
+        {
+            Debug.LogWarning("[MemorySlotHUD] MemorySystem not found during InitialBuild");
+        }
+
+        Refresh();
+    }
+
+    private void OnDestroy()
+    {
+        // Clean up subscriptions when object is destroyed
+        if (MemorySystem.Instance != null)
+        {
+            MemorySystem.Instance.OnMemoriesChanged -= Refresh;
+            MemorySystem.Instance.OnMemoryKept -= _ => Refresh();
+            MemorySystem.Instance.OnMemoryForgotten -= _ => Refresh();
+        }
+    }
 
     private void Update()
     {
-        // Smoothly animate dot colours
         for (int i = 0; i < slotDots.Count; i++)
         {
             slotDots[i].color = Color.Lerp(
@@ -64,12 +67,8 @@ private void InitialBuild()
         }
     }
 
-    // -------------------------------------------------------
-    // BUILD — creates one dot per slot
-    // -------------------------------------------------------
     private void BuildSlots()
     {
-        // Clear any existing
         foreach (Transform child in slotContainer)
             Destroy(child.gameObject);
 
@@ -90,12 +89,10 @@ private void InitialBuild()
         }
     }
 
-    // -------------------------------------------------------
-    // REFRESH — called whenever memories change
-    // -------------------------------------------------------
     public void Refresh()
     {
         if (MemorySystem.Instance == null) return;
+        if (slotDots.Count == 0) return;
 
         int used = MemorySystem.Instance.GetUsedSlots();
 
