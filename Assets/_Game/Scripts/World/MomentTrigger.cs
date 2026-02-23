@@ -1,10 +1,8 @@
 // MomentTrigger.cs
-// Place this on any world object to make it a potential memory moment.
-// When the player enters the trigger zone, a prompt appears.
-// If the player interacts, the memory is offered to MemorySystem.
-// 
-// This is designed to be placed on ENV_ prefabs so moments
-// are baked into the environment, not floated as pickups.
+// World object that offers a memory when the player enters its zone.
+// Has optional visual presence — a soft coloured glow that pulses gently.
+// The glow colour comes from the memory's own memoryColour field.
+// visibleInWorld can be toggled per-trigger for testing vs final polish.
 
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -16,23 +14,33 @@ public class MomentTrigger : MonoBehaviour
     // CONFIGURATION
     // -------------------------------------------------------
     [Header("Memory")]
-    [Tooltip("The memory this moment can create")]
     public MemoryData memoryData;
 
     [Header("Trigger Zone")]
-    [Tooltip("How close the player needs to be to be offered this moment")]
     public float triggerRadius = 3f;
 
-    [Header("Presentation")]
-    [Tooltip("Text shown as interaction prompt. e.g. 'Sit for a while'")]
+    [Header("Interaction")]
     public string promptText = "Experience this moment";
-
-    [Tooltip("How long to linger before the memory is offered (seconds)")]
     public float lingerTime = 0f;
-
-    [Header("One Time")]
-    [Tooltip("Once experienced, this moment disappears. Keeps world feeling finite.")]
     public bool consumeOnUse = true;
+
+    [Header("Visual Presence")]
+    [Tooltip("Show a coloured glow in the world. Use for testing or as final design.")]
+    public bool visibleInWorld = true;
+
+    [Tooltip("How large the glow light radius is")]
+    public float glowRadius = 2.5f;
+
+    [Tooltip("How bright the glow is. 0.3-0.8 works well.")]
+    [Range(0f, 2f)]
+    public float glowIntensity = 0.5f;
+
+    [Tooltip("Speed of the pulse breathing effect")]
+    public float pulseSpeed = 1.2f;
+
+    [Tooltip("How much the glow breathes in/out. 0 = no pulse.")]
+    [Range(0f, 0.5f)]
+    public float pulseAmount = 0.15f;
 
     // -------------------------------------------------------
     // STATE
@@ -40,13 +48,15 @@ public class MomentTrigger : MonoBehaviour
     private bool playerInRange = false;
     private bool hasBeenUsed = false;
     private float lingerTimer = 0f;
-    private bool isLingering = false;
-
     private PlayerInputActions inputActions;
+
+    // Visual components
+    private Light glowLight;
+    private float baseIntensity;
+    private float pulseTimer;
 
     // -------------------------------------------------------
     // EVENTS
-    // UI subscribes to these to show/hide prompt
     // -------------------------------------------------------
     public event System.Action<string> OnPlayerEnterRange;
     public event System.Action OnPlayerExitRange;
@@ -59,14 +69,44 @@ public class MomentTrigger : MonoBehaviour
     {
         inputActions = new PlayerInputActions();
 
-        // Set up the sphere collider as a trigger
         var col = GetComponent<SphereCollider>();
         col.isTrigger = true;
         col.radius = triggerRadius;
+
+        SetupVisuals();
     }
 
     private void OnEnable() => inputActions.Player.Enable();
     private void OnDisable() => inputActions.Player.Disable();
+
+    // -------------------------------------------------------
+    // VISUAL SETUP
+    // Creates a point light using the memory's colour
+    // -------------------------------------------------------
+    private void SetupVisuals()
+    {
+        if (!visibleInWorld) return;
+        if (memoryData == null) return;
+
+        // Create a child object to hold the light
+        // so it can be positioned independently if needed
+        GameObject lightObj = new GameObject("MomentGlow");
+        lightObj.transform.SetParent(transform);
+        lightObj.transform.localPosition = Vector3.zero;
+
+        // Add a point light
+        glowLight = lightObj.AddComponent<Light>();
+        glowLight.type = LightType.Point;
+        glowLight.color = memoryData.memoryColour;
+        glowLight.intensity = glowIntensity;
+        glowLight.range = glowRadius;
+        glowLight.shadows = LightShadows.None; // no shadows — keeps it soft
+
+        baseIntensity = glowIntensity;
+        pulseTimer = Random.Range(0f, Mathf.PI * 2f); // randomise start phase
+                                                        // so multiple triggers
+                                                        // don't pulse in sync
+    }
 
     // -------------------------------------------------------
     // UPDATE
@@ -76,83 +116,137 @@ public class MomentTrigger : MonoBehaviour
         if (!playerInRange || hasBeenUsed) return;
         if (GameManager.Instance != null && !GameManager.Instance.IsPlaying()) return;
 
-        // Handle linger timer if required
+        HandleInteraction();
+        HandlePulse();
+    }
+
+    private void HandleInteraction()
+    {
         if (lingerTime > 0f)
         {
-            isLingering = true;
             lingerTimer += Time.deltaTime;
-
             if (lingerTimer >= lingerTime)
                 ExperienceMoment();
-
             return;
         }
 
-        // Otherwise wait for interact button
         if (inputActions.Player.Interact.WasPressedThisFrame())
             ExperienceMoment();
     }
 
     // -------------------------------------------------------
+    // PULSE — gentle breathing light effect
+    // -------------------------------------------------------
+    private void HandlePulse()
+    {
+        if (glowLight == null) return;
+
+        pulseTimer += Time.deltaTime * pulseSpeed;
+        float pulse = Mathf.Sin(pulseTimer) * pulseAmount;
+        glowLight.intensity = baseIntensity + pulse;
+    }
+
+    // -------------------------------------------------------
     // TRIGGER DETECTION
     // -------------------------------------------------------
-private void OnTriggerEnter(Collider other)
-{
-    if (hasBeenUsed) return;
-    if (!other.CompareTag("Player")) return;
-
-    playerInRange = true;
-    lingerTimer = 0f;
-
-    // Tell UI to show prompt
-    UIManager.Instance?.ShowMomentPrompt(promptText);
-
-    Debug.Log($"[MomentTrigger] Player in range of: {memoryData?.memoryTitle}");
-}
-
-private void OnTriggerExit(Collider other)
-{
-    if (!other.CompareTag("Player")) return;
-
-    playerInRange = false;
-    lingerTimer = 0f;
-
-    UIManager.Instance?.HideMomentPrompt();
-}
-
-    // -------------------------------------------------------
-    // EXPERIENCE THE MOMENT
-    // -------------------------------------------------------
-private void ExperienceMoment()
-{
-    if (memoryData == null)
+    private void OnTriggerEnter(Collider other)
     {
-        Debug.LogWarning($"[MomentTrigger] No MemoryData assigned on {gameObject.name}");
-        return;
+        if (hasBeenUsed) return;
+        if (!other.CompareTag("Player")) return;
+
+        playerInRange = true;
+        lingerTimer = 0f;
+
+        // Brighten the glow when player enters
+        if (glowLight != null)
+        {
+            baseIntensity = glowIntensity * 1.6f;
+            glowLight.range = glowRadius * 1.3f;
+        }
+
+        UIManager.Instance?.ShowMomentPrompt(promptText);
+        OnPlayerEnterRange?.Invoke(promptText);
     }
 
-    // Hide the prompt immediately when moment is experienced
-    UIManager.Instance?.HideMomentPrompt();
-
-    MemorySystem.Instance?.OfferMemory(memoryData);
-    OnMomentExperienced?.Invoke();
-
-    if (consumeOnUse)
+    private void OnTriggerExit(Collider other)
     {
-        hasBeenUsed = true;
+        if (!other.CompareTag("Player")) return;
+
+        playerInRange = false;
+        lingerTimer = 0f;
+
+        // Return glow to normal
+        if (glowLight != null)
+        {
+            baseIntensity = glowIntensity;
+            glowLight.range = glowRadius;
+        }
+
+        UIManager.Instance?.HideMomentPrompt();
+        OnPlayerExitRange?.Invoke();
+    }
+
+    // -------------------------------------------------------
+    // EXPERIENCE
+    // -------------------------------------------------------
+    private void ExperienceMoment()
+    {
+        if (memoryData == null)
+        {
+            Debug.LogWarning($"[MomentTrigger] No MemoryData assigned on {gameObject.name}");
+            return;
+        }
+
+        UIManager.Instance?.HideMomentPrompt();
+        MemorySystem.Instance?.OfferMemory(memoryData);
+        OnMomentExperienced?.Invoke();
+
+        if (consumeOnUse)
+        {
+            hasBeenUsed = true;
+
+            // Fade out the light before disabling
+            if (glowLight != null)
+                StartCoroutine(FadeOutAndDisable());
+            else
+                gameObject.SetActive(false);
+        }
+    }
+
+    // -------------------------------------------------------
+    // FADE OUT
+    // -------------------------------------------------------
+    private System.Collections.IEnumerator FadeOutAndDisable()
+    {
+        float duration = 1.2f;
+        float elapsed = 0f;
+        float startIntensity = glowLight.intensity;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            glowLight.intensity = Mathf.Lerp(startIntensity, 0f, elapsed / duration);
+            yield return null;
+        }
+
         gameObject.SetActive(false);
     }
-}
+
     // -------------------------------------------------------
-    // EDITOR VISUALISATION
-    // Draws the trigger radius as a sphere in the Scene view
-    // so you can see it without running the game
+    // EDITOR GIZMO
     // -------------------------------------------------------
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(1f, 0.8f, 0.4f, 0.3f);
+        Color gizmoColour = memoryData != null
+            ? memoryData.memoryColour
+            : new Color(1f, 0.8f, 0.4f, 1f);
+
+        gizmoColour.a = 0.25f;
+        Gizmos.color = gizmoColour;
         Gizmos.DrawSphere(transform.position, triggerRadius);
-        Gizmos.color = new Color(1f, 0.8f, 0.4f, 0.8f);
+
+        gizmoColour.a = 0.8f;
+        Gizmos.color = gizmoColour;
         Gizmos.DrawWireSphere(transform.position, triggerRadius);
     }
 }
