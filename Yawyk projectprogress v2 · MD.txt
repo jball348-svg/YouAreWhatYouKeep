@@ -1,0 +1,1107 @@
+# You Are What You Keep — Complete Project Document
+### Version 3 — Full Handoff Document
+
+> This document is a complete record of everything built, every decision made, all known issues, and the full technical roadmap. It is written to allow any developer or LLM to pick up this project with full context. Read it top to bottom before touching anything.
+
+---
+
+## Table of Contents
+
+1. Game Manifesto
+2. Project Setup & Tools
+3. Folder Structure
+4. Scene Architecture
+5. Systems Architecture Overview
+6. Scripts — Complete Reference
+7. UI Canvas — Current State, Known Issues, Target State
+8. Memory Assets Created
+9. Input System
+10. Build Phases — Complete Roadmap
+11. Pre-wired Dependencies & Future Hooks
+12. Known Issues Log
+
+---
+
+---
+
+# PART 1 — GAME MANIFESTO
+
+### Working Title
+**You Are What You Keep**
+
+### Core Philosophy
+The goal is not to win — the goal is to live a meaningful life inside a system. This game rejects traditional progression loops (XP, loot, grinding) in favour of emotional payoff, player-authored meaning, and systemic emergence. The game should create memories, not milestones.
+
+### Player Objective
+There is no explicit win state. The player is trying to live an interesting life, accumulate meaningful moments, and shape who they become through what they experience. Endings are reflective, not victorious.
+
+---
+
+### Design Pillars
+
+**Moments over Progression** — The primary reward is a felt experience: awe, regret, nostalgia, calm, pride. If a mechanic exists, it must serve a moment.
+
+**Identity as Inventory** — The player collects memories, traits, and ways of being. Your build is what you've lived, what you've kept, what you've let go of.
+
+**Time as Gentle Pressure** — Time is always present but not punishing. Bittersweet, inevitable, motivating. Time creates meaning by making things finite.
+
+**Systems That Respect the Player** — Avoid over-explaining. Trust player interpretation. Allow ambiguity. Meaning emerges through interaction, not instruction.
+
+**Self-Authored Reward** — The best moments are not scripted. The game enables useless but beautiful actions, personal rituals, quiet discovery.
+
+---
+
+### Core Mechanics
+
+**Memories as Inventory** — Players collect memories instead of items. Each memory occupies a limited slot, subtly alters gameplay or perception, and shapes identity. You cannot keep everything. Forgetting is a mechanic.
+
+Example memories: "Swam at midnight", "Played guitar in the rain", "Got lost in the woods"
+
+**Limited Inner Space** — 5–8 memory slots. Creates emotional tradeoffs, personal curation, identity evolution. Letting go should feel significant.
+
+**Moments That Transform** — Certain experiences permanently change the player. A near-death fall becomes fearlessness or fragility. Performing publicly becomes a confidence aura. Deep solitude becomes heightened awareness. Transformation replaces levelling.
+
+**The World Remembers** — Meaningful actions leave subtle echoes. A place where you linger becomes warmer. A dangerous jump becomes a local legend. Music played somewhere lingers faintly later.
+
+**Skills as Lived Experience** — Skills emerge from behaviour and fade when abandoned. Climb often → natural agility. Sit quietly → heightened awareness. Help others → social warmth.
+
+---
+
+### Tone and Aesthetic
+Warm, reflective, slightly melancholic, hopeful. Not bleak. Not cynical. Stylised realism or soft minimalism. Strong lighting language. Expressive colour shifts. Calm environmental storytelling.
+
+Reference points: Journey, Flower (thatgamecompany), Firewatch, Gris.
+
+### One-Line Summary
+*A game about becoming someone through the moments you choose to keep.*
+
+---
+
+---
+
+# PART 2 — PROJECT SETUP & TOOLS
+
+| Item | Value |
+|------|-------|
+| Engine | Unity (Latest LTS) |
+| Render Pipeline | URP (Universal Render Pipeline) |
+| Input System | New Unity Input System (package installed) |
+| Version Control | Git + GitHub, managed via GitHub Desktop |
+| Text Rendering | TextMeshPro (package installed, essentials imported) |
+
+### Unity Project Settings
+- Asset Serialization Mode: **Force Text**
+- Version Control Mode: **Visible Meta Files**
+- These settings make files readable by Git
+
+### Post Processing
+A Global Volume exists in `_Persistent` scene with a profile containing: Color Adjustments, Bloom, Vignette, Depth of Field. Currently at default values. Will be animated by the Emotional Response System in Phase 5.
+
+---
+
+---
+
+# PART 3 — FOLDER STRUCTURE
+
+```
+Assets/
+├── _Game/
+│   ├── Art/
+│   │   ├── Characters/
+│   │   ├── Environment/
+│   │   ├── UI/
+│   │   └── VFX/
+│   ├── Audio/
+│   │   ├── Ambient/
+│   │   ├── Music/
+│   │   └── SFX/
+│   ├── Materials/
+│   │   ├── Characters/
+│   │   ├── Environment/
+│   │   └── PostProcessing/
+│   ├── Prefabs/
+│   │   ├── Characters/       ← PFB_Player lives here
+│   │   ├── Environment/
+│   │   ├── Memories/         ← MEM_MomentTrigger_Base lives here
+│   │   ├── Systems/          ← SYS_ prefabs live here
+│   │   └── UI/               ← UI_Canvas, UI_MemoryCard, UI_SlotDot live here
+│   ├── Scenes/
+│   │   ├── Core/             ← _Boot, _Persistent
+│   │   └── Locations/        ← Location_Opening
+│   ├── Scripts/
+│   │   ├── Core/             ← GameManager.cs, PlayerInputActions
+│   │   ├── Identity/         ← Phase 6
+│   │   ├── Memories/         ← MemoryData.cs, MemoryInstance.cs, MemorySystem.cs
+│   │   ├── Player/           ← PlayerController.cs, CameraController.cs
+│   │   ├── Time/             ← Phase 7
+│   │   ├── World/            ← MomentTrigger.cs
+│   │   └── UI/               ← All UI scripts
+│   └── ScriptableObjects/
+│       ├── Memories/         ← MEM_ assets live here
+│       ├── Traits/           ← Phase 6
+│       └── Moments/          ← Phase 6
+└── ThirdParty/
+```
+
+### Prefab Naming Convention
+- `SYS_` — system objects (GameManager, AudioManager)
+- `ENV_` — environment pieces
+- `MEM_` — memory-related objects
+- `UI_` — interface elements
+- `CHR_` — characters
+- `PFB_` — player and major character prefabs
+
+---
+
+---
+
+# PART 4 — SCENE ARCHITECTURE
+
+### Build Settings Order
+1. `_Boot` — entry point, initialises everything
+2. `_Persistent` — runs forever, holds all global systems
+3. `Location_Opening` — first playable space
+
+### _Persistent Scene Hierarchy
+```
+_Persistent
+└── --- SYSTEMS ---                  ← DontDestroyOnLoad is set HERE (root only)
+    ├── GameManager                  ← GameManager.cs attached
+    └── MemorySystem                 ← MemorySystem.cs attached
+└── --- ENVIRONMENT ---
+    └── GlobalPostProcessVolume      ← Global Volume with URP post processing profile
+```
+
+**Critical rule:** Only the root object `--- SYSTEMS ---` calls `DontDestroyOnLoad`. Child objects (MemorySystem etc.) inherit persistence automatically. Do NOT call `DontDestroyOnLoad` on child objects — Unity will throw an error.
+
+### Location_Opening Scene Hierarchy
+```
+Location_Opening
+├── Player                           ← PFB_Player prefab
+│   ├── CameraRoot
+│   │   └── PlayerCamera
+│   └── BodyRoot
+├── [Environment geometry]           ← floor, test objects etc.
+├── Moment_WaterEdge                 ← MomentTrigger example
+└── UICanvas                         ← UI_Canvas prefab
+```
+
+---
+
+---
+
+# PART 5 — SYSTEMS ARCHITECTURE OVERVIEW
+
+This is the most important section for understanding how everything connects.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    DATA LAYER                           │
+│  MemoryData (ScriptableObject) — defines what a        │
+│  memory IS. One asset per possible memory in game.     │
+│  TraitType (enum) — categories of identity             │
+│  MemoryCategory (enum) — types of experience           │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────┐
+│                  RUNTIME STATE                          │
+│  MemoryInstance (plain C# class) — a memory the        │
+│  player currently holds. Wraps MemoryData with         │
+│  runtime state (vividness, time acquired etc.)         │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────┐
+│            PERSISTENT MANAGERS (never unload)           │
+│                                                         │
+│  GameManager — tracks game state, broadcasts changes    │
+│  MemorySystem — holds slots, keep/forget logic,         │
+│                 fires events when memories change       │
+│                                                         │
+│  [Phase 5] AudioManager — layered ambient audio         │
+│  [Phase 6] IdentitySystem — derives traits from         │
+│                             held memories               │
+│  [Phase 7] TimeSystem — game clock, world shifting      │
+└──────┬──────────────┬──────────────────────────────────┘
+       │              │
+┌──────▼──────┐ ┌─────▼──────────────────────────────────┐
+│  WORLD      │ │  UI LAYER                               │
+│  OBJECTS    │ │                                         │
+│             │ │  UIManager — coordinates all UI panels  │
+│  Moment     │ │  MomentPromptUI — prompt near moments   │
+│  Trigger    │ │  MemorySlotHUD — dot indicators         │
+│             │ │  MemoryReflectUI — full reflect screen  │
+│  [Phase 7]  │ │  MemoryCardUI — individual cards        │
+│  World Echo │ │                                         │
+│  System     │ └─────────────────────────────────────────┘
+└─────────────┘
+       │
+┌──────▼──────────────────────────────────────────────────┐
+│                   PLAYER                                │
+│  PlayerController — movement, physics                   │
+│  CameraController — bob, tilt, emotional camera fx      │
+│                                                         │
+│  [Phase 6] Traits alter movement speed, jump,           │
+│            perception, camera behaviour                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Communication Pattern
+Systems communicate through **C# events**, not direct references. Example: when a memory is kept, `MemorySystem` fires `OnMemoryKept`. `UIManager` is subscribed and updates the HUD. `IdentitySystem` (Phase 6) is also subscribed and recalculates traits. Neither system knows the other exists. This keeps code decoupled and maintainable.
+
+---
+
+---
+
+# PART 6 — SCRIPTS COMPLETE REFERENCE
+
+---
+
+## GameManager.cs
+**Path:** `Assets/_Game/Scripts/Core/GameManager.cs`
+**Attached to:** `GameManager` object (child of `--- SYSTEMS ---`) in `_Persistent`
+**Pattern:** Singleton — access via `GameManager.Instance`
+
+**Game States:**
+```csharp
+Booting       // game is loading
+Playing       // normal play
+Reflecting    // player reviewing memories (Tab open)
+Transitioning // moving between locations
+Ending        // final reflection sequence
+```
+
+**IMPORTANT:** `CurrentState` is temporarily hardcoded to `GameState.Playing` for testing. Replace with proper boot sequence later.
+
+**Public API:**
+```csharp
+GameManager.Instance.SetGameState(GameState.Playing);
+GameManager.Instance.IsPlaying();                         // returns bool
+GameManager.Instance.CurrentState;                        // returns GameState
+GameManager.Instance.OnGameStateChanged += MyMethod;      // event subscription
+```
+
+---
+
+## PlayerController.cs
+**Path:** `Assets/_Game/Scripts/Player/PlayerController.cs`
+**Attached to:** Root `Player` object
+**Prefab:** `Assets/_Game/Prefabs/Characters/PFB_Player`
+**Requires on same object:** Rigidbody, CapsuleCollider
+
+**Rigidbody settings:** Mass 70, Drag 5, Angular Drag 999, Freeze Rotation XYZ
+
+**Capsule settings:** Height 1.8, Radius 0.4, Center Y 0.9
+
+**Player object Tag:** Must be tagged `Player` — trigger detection depends on this
+
+**Inspector tuning values:**
+| Field | Default | Feel |
+|-------|---------|------|
+| Walk Speed | 3.5 | Lower = contemplative |
+| Acceleration | 8 | Lower = dreamy |
+| Deceleration | 12 | How fast player stops |
+| Jump Force | 4 | |
+| Gravity Multiplier | 2.5 | Extra downward weight |
+| Look Sensitivity | 0.15 | Lower = cinematic |
+| Vertical Look Clamp | 80 | Degrees up/down |
+| Ground Check Distance | 0.15 | |
+
+**Ground detection:** Uses a raycast downward. Floor geometry must be on a Layer called `Ground`. Assign this layer to floor objects.
+
+**Dependencies:** `GameManager` (checks IsPlaying), `PlayerInputActions`
+
+---
+
+## CameraController.cs
+**Path:** `Assets/_Game/Scripts/Player/CameraController.cs`
+**Attached to:** `PlayerCamera` object (child of CameraRoot, child of Player)
+**Tagged:** MainCamera
+
+**Purpose:** Subtle camera life. Breathing bob while moving, slight roll when strafing. Small details that make the world feel inhabited.
+
+**Dependencies:** `PlayerInputActions`
+
+**Player Hierarchy:**
+```
+Player (root) ← PlayerController.cs, Rigidbody, CapsuleCollider, Tag:Player
+├── CameraRoot (Y pos: 1.7 — eye height)
+│   └── PlayerCamera ← Camera component, CameraController.cs, Tag:MainCamera
+└── BodyRoot ← future body sway
+```
+
+---
+
+## MemoryData.cs
+**Path:** `Assets/_Game/Scripts/Memories/MemoryData.cs`
+**Type:** ScriptableObject
+**Create via:** Right-click in Project → Memory → New Memory
+**Assets stored in:** `Assets/_Game/ScriptableObjects/Memories/`
+
+**Purpose:** Template defining what a memory IS. One asset per possible memory in the game. Data only — no behaviour.
+
+**Fields:**
+```csharp
+// Identity
+string memoryTitle          // "Swam at midnight"
+string memoryDescription    // Longer reflection text
+
+// Classification
+MemoryCategory category     // Nature/Solitude/Connection/Risk/Creation/Loss/Wonder/Stillness
+float emotionalWeight       // 0-1, identity influence strength
+
+// World Echo — IMPLEMENTED IN PHASE 7
+// These fields are pre-built into the data structure now
+// so Phase 7 can read them without changing MemoryData
+Color worldTintContribution    // Subtle colour the world gains when this memory is held
+AudioClip ambientLayer         // Audio layer unlocked in the ambient mix
+
+// Identity Traits — IMPLEMENTED IN PHASE 6
+// Pre-built into data structure now
+TraitType[] reinforcedTraits   // Traits nudged upward when this memory is kept
+TraitType[] erodedTraits       // Traits quietly reduced when kept
+
+// Presentation
+Sprite memoryIcon
+Color memoryColour             // UI card accent colour
+```
+
+**Enums (defined in MemoryData.cs):**
+```csharp
+MemoryCategory: Nature, Solitude, Connection, Risk, Creation, Loss, Wonder, Stillness
+TraitType: Fearless, Fragile, Curious, Calm, Aware, Warm, Agile, Melancholic, Resilient, Open
+```
+
+---
+
+## MemoryInstance.cs
+**Path:** `Assets/_Game/Scripts/Memories/MemoryInstance.cs`
+**Type:** Plain C# class (not MonoBehaviour, not ScriptableObject)
+**Lives:** Inside MemorySystem's list at runtime
+
+**Purpose:** A memory the player actually holds. Wraps MemoryData with live state.
+
+**Fields:**
+```csharp
+MemoryData data             // Source template
+float timeAcquired          // Game time when memory formed
+bool hasBeenReflectedOn     // Has player examined it in UI
+float vividness             // 0-1, fades over game time
+```
+
+**Convenience properties:** `.Title` `.Description` `.Category` `.EmotionalWeight` `.MemoryColour` `.Icon`
+
+---
+
+## MemorySystem.cs
+**Path:** `Assets/_Game/Scripts/Memories/MemorySystem.cs`
+**Attached to:** `MemorySystem` object (child of `--- SYSTEMS ---`) in `_Persistent`
+**Pattern:** Singleton — access via `MemorySystem.Instance`
+**Note:** Does NOT call DontDestroyOnLoad (inherits from root parent)
+
+**Configuration:**
+```csharp
+int maxMemorySlots = 6    // Inspector: range 3-10
+```
+
+**Events — subscribe to these from other systems:**
+```csharp
+OnMemoryKept(MemoryInstance)                           // memory successfully kept
+OnMemoryForgotten(MemoryInstance)                      // memory let go
+OnMemorySlotsFull(MemoryData, List<MemoryInstance>)    // slots full, player must choose
+OnMemoriesChanged()                                    // any change — UI listens to this
+```
+
+**Public API:**
+```csharp
+MemorySystem.Instance.OfferMemory(memoryData)                 // offer from world
+MemorySystem.Instance.KeepMemory(memoryData)                  // keep directly
+MemorySystem.Instance.ForgetMemory(memoryInstance)            // let go
+MemorySystem.Instance.ReplaceMemory(toForget, toKeepData)     // swap
+MemorySystem.Instance.GetAllMemories()                        // List<MemoryInstance>
+MemorySystem.Instance.HasFreeSlot()                           // bool
+MemorySystem.Instance.HasMemoryOfCategory(category)           // bool
+MemorySystem.Instance.GetTotalEmotionalWeight()               // float
+MemorySystem.Instance.GetUsedSlots()                          // int
+MemorySystem.Instance.GetSlotCount()                          // int
+MemorySystem.Instance.AlreadyHolding(memoryData)              // bool
+MemorySystem.Instance.GetGameTime()                           // float (temp, Phase 7 replaces)
+```
+
+---
+
+## MomentTrigger.cs
+**Path:** `Assets/_Game/Scripts/World/MomentTrigger.cs`
+**Attached to:** World objects that offer memories
+**Base Prefab:** `Assets/_Game/Prefabs/Memories/MEM_MomentTrigger_Base`
+**Requires:** SphereCollider (added automatically), Player tagged `Player`
+
+**Inspector fields:**
+```csharp
+MemoryData memoryData        // The memory this moment creates
+float triggerRadius = 3f     // Proximity required
+string promptText            // "Sit for a while"
+float lingerTime = 0f        // If > 0, auto-triggers after N seconds standing still
+bool consumeOnUse = true     // Disappears after experienced
+```
+
+**Behaviour:**
+- If `lingerTime > 0`: memory forms automatically after player stands in zone for that duration
+- If `lingerTime = 0`: player presses E (Interact) to take the memory
+- On experience: calls `UIManager.Instance.HideMomentPrompt()` then `MemorySystem.Instance.OfferMemory()`
+- On exit zone: calls `UIManager.Instance.HideMomentPrompt()`
+- Editor gizmo: draws visible sphere in Scene view for placement
+
+**Events (for future UI extensions):**
+```csharp
+OnPlayerEnterRange(string promptText)
+OnPlayerExitRange()
+OnMomentExperienced()
+```
+
+---
+
+## UIManager.cs
+**Path:** `Assets/_Game/Scripts/UI/UIManager.cs`
+**Attached to:** `UICanvas` root object in each location scene
+**Pattern:** Singleton — access via `UIManager.Instance`
+
+**Purpose:** Central UI coordinator. Nothing else should directly show/hide panels. Listens to GameManager and MemorySystem events. Manages cursor lock state.
+
+**Inspector references required:**
+```csharp
+MomentPromptUI momentPrompt
+MemorySlotHUD memorySlotHUD
+MemoryReflectUI memoryReflectUI
+```
+
+**Cursor management:**
+- Playing state: cursor locked, invisible
+- Reflecting state: cursor unlocked, visible (player clicks memory cards)
+
+**Handles:**
+- Tab key → toggle reflect screen
+- `OnMemoriesChanged` → refresh HUD and reflect screen if open
+- `OnMemorySlotsFull` → open reflect screen in replace mode automatically
+
+**Public API:**
+```csharp
+UIManager.Instance.ShowMomentPrompt(string text)
+UIManager.Instance.HideMomentPrompt()
+UIManager.Instance.CloseReflectScreen()
+```
+
+---
+
+## MomentPromptUI.cs
+**Path:** `Assets/_Game/Scripts/UI/MomentPromptUI.cs`
+**Attached to:** `MomentPrompt` object under HUD
+
+**Behaviour:** Fades in when player enters a moment zone, fades out on exit or after memory is taken. Clears text after fade completes to prevent ghost text.
+
+**Inspector references:**
+```csharp
+TextMeshProUGUI promptText
+CanvasGroup canvasGroup      // controls alpha fade
+float fadeSpeed = 3f
+```
+
+---
+
+## MemorySlotHUD.cs
+**Path:** `Assets/_Game/Scripts/UI/MemorySlotHUD.cs`
+**Attached to:** `MemorySlotHUD` object under HUD
+
+**Behaviour:** Spawns one dot per memory slot. Dots animate to filled/empty colour when memories change. Uses `Invoke("InitialBuild", 0.1f)` delay to avoid race condition with MemorySystem singleton on startup.
+
+**Inspector references:**
+```csharp
+Transform slotContainer
+GameObject slotDotPrefab      // UI_SlotDot prefab
+Color filledColour            // warm cream, high alpha
+Color emptyColour             // warm cream, very low alpha
+```
+
+---
+
+## MemoryReflectUI.cs
+**Path:** `Assets/_Game/Scripts/UI/MemoryReflectUI.cs`
+**Attached to:** `MemoryReflect` object under Screens
+
+**Two modes:**
+- **Normal mode** (Tab): player can browse memories, click to see detail, optionally forget. Forgetting closes the screen.
+- **Replace mode** (auto-triggered when slots full): player MUST choose a memory to forget before screen closes. Close button hidden in this mode.
+
+**Inspector references:**
+```csharp
+Transform memoryCardContainer     // Content object inside Scroll View
+GameObject memoryCardPrefab       // UI_MemoryCard prefab
+TextMeshProUGUI detailTitle
+TextMeshProUGUI detailDescription
+TextMeshProUGUI detailCategory
+Button forgetButton
+GameObject detailPanel            // hidden until card selected
+GameObject replaceModeNotice      // amber notice bar
+TextMeshProUGUI replaceModeText
+TextMeshProUGUI slotCountText
+Button closeButton
+CanvasGroup canvasGroup
+```
+
+---
+
+## MemoryCardUI.cs
+**Path:** `Assets/_Game/Scripts/UI/MemoryCardUI.cs`
+**Attached to:** `UI_MemoryCard` prefab root
+
+**Purpose:** Individual memory card. Displays title, category, accent colour. Handles selection state visually via Outline component.
+
+**Inspector references (set in prefab):**
+```csharp
+Image backgroundImage
+Image accentBar           // left-side coloured strip
+TextMeshProUGUI titleText
+TextMeshProUGUI categoryText
+Button button
+Outline outline
+```
+
+**Public:**
+```csharp
+MemoryInstance BoundMemory { get; }      // which memory this card represents
+void Initialise(MemoryInstance, Action<MemoryInstance>)
+void SetSelected(bool)
+```
+
+---
+
+---
+
+# PART 7 — UI CANVAS: TARGET STATE, CURRENT STATE & KNOWN ISSUES
+
+## What the UI Should Look Like
+
+### Overall Feel
+The UI should feel like opening a personal journal — quiet, deliberate, slightly intimate. Not a game inventory screen. Dark panels with warm cream typography. Minimal chrome. Subtle fades.
+
+### MomentPromptUI
+- Appears at the bottom-centre of the screen when player is near a moment trigger
+- Fades in smoothly, fades out when player leaves zone or takes the memory
+- Text is italic, warm cream, small — a whisper not a notification
+- Positioned about 80px from the bottom edge, centred horizontally
+
+### MemorySlotHUD
+- Always visible, bottom-right corner of screen
+- Small dots (10x10px circles) spaced 8px apart
+- Filled dot: warm cream, high opacity
+- Empty dot: same colour, very low opacity
+- Animates smoothly when memories are gained or lost
+
+### MemoryReflectUI (Tab screen)
+- Full screen dark overlay behind a centred panel (860x520px)
+- Left ~52% of panel: scrollable list of memory cards
+- Right ~48% of panel: detail view for selected card
+- Header bar across top of panel: close button (X) top-right
+- Slot count text ("2 / 6 memories kept") pinned to bottom-left of card area
+- Memory cards: dark card, coloured left accent bar, title + category text
+- Detail view: category tag (small caps) → title (large italic) → description → Forget button
+- Replace mode: amber notice bar below header explaining the forced choice
+
+---
+
+## Target UI Hierarchy (Exact)
+
+```
+UICanvas
+├── HUD
+│   ├── MemorySlotHUD          ← MemorySlotHUD.cs, anchored bottom-right
+│   │   └── SlotContainer      ← Horizontal Layout Group, spawns dots at runtime
+│   └── MomentPrompt           ← MomentPromptUI.cs, CanvasGroup, anchored bottom-centre
+│       └── PromptText         ← TextMeshPro
+│
+└── Screens
+    └── MemoryReflect          ← MemoryReflectUI.cs, CanvasGroup (starts alpha 0)
+        ├── Backdrop            ← Image, full screen, black semi-transparent, Raycast ON
+        └── Panel               ← Image, 860x520, centred, Raycast OFF
+            ├── Header          ← Empty, top strip, height 56
+            │   └── CloseButton ← Button + TMP "×", anchored top-right of Header
+            ├── ReplaceModeNotice ← Image (amber), height 64, below Header, hidden by default
+            │   └── ReplaceText ← TMP
+            ├── MemoryCardContainer ← Scroll View, left 52%, top 56, bottom 36
+            │   └── Viewport    ← has Mask component, Show Mask Graphic OFF
+            │       └── Content ← Vertical Layout Group + Content Size Fitter
+            │           └── [cards spawned here at runtime]
+            ├── DetailPanel     ← Empty, right 48%, Vertical Layout Group, hidden by default
+            │   ├── DetailCategory  ← TMP small caps
+            │   ├── DetailTitle     ← TMP large italic
+            │   ├── DetailDescription ← TMP body
+            │   └── ForgetButton    ← Button + TMP "Forget this"
+            └── SlotCountText   ← TMP, anchored bottom-left of Panel, below scroll area
+```
+
+---
+
+## Exact RectTransform Values
+
+### UICanvas
+- Render Mode: Screen Space Overlay
+- UI Scale Mode: Scale With Screen Size
+- Reference Resolution: 1920 x 1080
+- Match: 0.5
+
+### HUD
+- Anchor Min/Max: (0,0) to (1,1) — full stretch
+- All offsets: 0
+
+### MemorySlotHUD
+- Anchor Min: (1, 0) Max: (1, 0) — bottom-right corner
+- Pivot: (1, 0)
+- Pos X: -24, Pos Y: 24
+- Width: 200, Height: 20
+
+### SlotContainer (child of MemorySlotHUD)
+- Anchor: full stretch
+- Horizontal Layout Group: Spacing 8, Child Alignment Middle Right
+- Control Child Size: false for both, Force Expand: false for both
+
+### MomentPrompt
+- Anchor Min: (0.5, 0) Max: (0.5, 0) — bottom centre
+- Pivot: (0.5, 0)
+- Pos X: 0, Pos Y: 80
+- Width: 400, Height: 60
+- Has CanvasGroup component, Alpha starts at 0
+
+### PromptText (child of MomentPrompt)
+- Anchor: full stretch
+- Font Size: 18, Italic, Centre Middle, Colour: warm cream
+
+### Screens
+- Anchor: full stretch, all offsets 0
+
+### MemoryReflect
+- Anchor: full stretch, all offsets 0
+- Has CanvasGroup, starts Alpha 0, Interactable false, Blocks Raycasts false
+
+### Backdrop
+- Anchor: full stretch
+- Image colour: black at ~70% alpha
+- Raycast Target: ON (blocks world clicks)
+
+### Panel
+- Anchor Min: (0.5, 0.5) Max: (0.5, 0.5) — centred
+- Pivot: (0.5, 0.5)
+- Pos X: 0, Pos Y: 0
+- Width: 860, Height: 520
+- Raycast Target: OFF
+- NO layout group component on Panel itself
+
+### Header (child of Panel)
+- Anchor Min: (0, 1) Max: (1, 1) — top full width
+- Pivot: (0.5, 1)
+- Pos X: 0, Pos Y: 0, Height: 56
+- Left: 0, Right: 0
+
+### CloseButton (child of Header)
+- Anchor Min: (1, 0) Max: (1, 1) — right side of header
+- Pivot: (1, 0.5)
+- Pos X: 0, Width: 56
+- Image colour: transparent
+- Text child: "×", Font Size 28, Centre Middle
+
+### ReplaceModeNotice (child of Panel)
+- Anchor Min: (0, 1) Max: (1, 1)
+- Pivot: (0.5, 1)
+- Pos X: 0, Pos Y: -56, Height: 64
+- Left: 0, Right: 0
+- Image colour: amber (~R:80 G:55 B:20 A:200)
+- Active: FALSE by default (uncheck in Inspector)
+
+### MemoryCardContainer — Scroll View (child of Panel)
+- Anchor Min: (0, 0) Max: (0.52, 1)
+- Left: 0, Right: 0, Top: 56, Bottom: 36
+- Scroll View: Horizontal OFF, Vertical ON
+- Remove visible scrollbar (set to None, delete scrollbar child)
+
+### Viewport (child of MemoryCardContainer)
+- Anchor: full stretch, all offsets 0
+- Image colour: R:0 G:0 B:0 A:1 (nearly invisible but required for mask)
+- Has MASK component, Show Mask Graphic: OFF
+
+### Content (child of Viewport)
+- Anchor Min: (0, 1) Max: (1, 1)
+- Pivot: (0.5, 1)
+- Pos X: 0, Pos Y: 0
+- Has Vertical Layout Group:
+  - Padding: Left 12, Right 12, Top 12, Bottom 12
+  - Spacing: 8
+  - Child Alignment: Upper Centre
+  - Control Child Size Width: TRUE
+  - Control Child Size Height: FALSE
+  - Child Force Expand Width: TRUE
+  - Child Force Expand Height: FALSE
+- Has Content Size Fitter: Vertical Fit = Preferred Size
+
+### DetailPanel (child of Panel)
+- Anchor Min: (0.52, 0) Max: (1, 1)
+- Left: 0, Right: 0, Top: 56, Bottom: 0
+- Active: FALSE by default
+- Has Vertical Layout Group:
+  - Padding: Left 24, Right 24, Top 24, Bottom 24
+  - Spacing: 12
+  - Child Alignment: Upper Left
+  - Control Child Size Width: TRUE
+  - Child Force Expand Height: FALSE
+
+### DetailCategory (child of DetailPanel)
+- Has Layout Element: Min Height 20, Preferred Height 20, Flexible Width 1
+- Font Size: 10, Bold, muted colour
+
+### DetailTitle (child of DetailPanel)
+- Has Layout Element: Min Height 48, Preferred Height 56, Flexible Width 1
+- Font Size: 20, Italic, cream colour, Wrapping ON
+
+### DetailDescription (child of DetailPanel)
+- Has Layout Element: Min Height 80, Preferred Height 140, Flexible Width 1
+- Font Size: 13, Wrapping ON, Overflow: Truncate
+
+### ForgetButton (child of DetailPanel)
+- Has Layout Element: Min Height 44, Preferred Height 44, Flexible Width 1
+- Image colour: dark muted red (~R:90 G:45 B:35 A:220)
+- Text child: full stretch anchors, "Forget this", Font Size 14, Wrapping OFF, Overflow Overflow, Centre Middle
+
+### SlotCountText (child of Panel, NOT inside scroll area)
+- Anchor Min: (0, 0) Max: (0.52, 0) — bottom-left of card area
+- Pivot: (0, 0)
+- Pos X: 16, Pos Y: 8, Height: 28
+- Font Size: 12, muted colour, Left Middle alignment
+
+---
+
+## UI_MemoryCard Prefab Structure
+
+```
+MemoryCard (root)           ← MemoryCardUI.cs, Button, Outline, Image
+│   Height: 80
+│   Image colour: dark (~R:30 G:30 B:30 A:200)
+│   Button Transition: None
+│   Outline Effect Colour: low alpha white
+│   Layout Element: Min Height 72, Preferred Height 80, Flexible Width 1
+│   NO Vertical Layout Group on this root object
+│
+├── AccentBar               ← Image
+│   Anchor Min: (0,0) Max: (0,1)
+│   Pivot: (0, 0.5)
+│   Pos X: 0, Width: 4
+│   Colour: set at runtime by MemoryCardUI.Initialise()
+│
+├── TitleText               ← TextMeshPro
+│   Anchor Min: (0, 0.45) Max: (1, 1)
+│   Left: 16, Right: 8, Top: 8, Bottom: 0
+│   Font Size: 14, cream colour
+│   Wrapping: OFF, Overflow: Ellipsis
+│
+└── CategoryText            ← TextMeshPro
+    Anchor Min: (0, 0) Max: (1, 0.45)
+    Left: 16, Right: 8, Top: 0, Bottom: 8
+    Font Size: 10, muted colour, Bold
+    Wrapping: OFF, Overflow: Ellipsis
+```
+
+---
+
+## KNOWN UI ISSUES (current as of Phase 4)
+
+These issues were present at the end of Phase 4 and need resolving before Phase 5 begins.
+
+### Issue 1 — Memory Cards Not Visible/Clickable
+**Symptom:** The left panel appears as a grey rectangle. Memory card titles are not visible. Cards cannot be clicked.
+**Likely causes:**
+- A UI object (possibly Panel Image or Backdrop) has Raycast Target ON and is sitting in front of the cards in the hierarchy render order. UI renders bottom-to-top in the hierarchy — objects lower in the list render on top.
+- The UI_MemoryCard prefab's text children may have incorrect anchors or zero effective height due to Layout Group conflict.
+- The Viewport Mask may be missing, causing Content to render outside bounds.
+
+**Debugging steps:**
+1. In Scene view, switch to 2D view and look at the UI layers — identify which object is on top
+2. Check every object between UICanvas and the Content object — make sure Raycast Target is OFF on everything except Backdrop and the cards themselves
+3. Open UI_MemoryCard prefab — confirm TitleText and CategoryText have non-zero height when previewed in prefab edit mode
+4. Confirm Viewport has a Mask component with Show Mask Graphic OFF
+
+### Issue 2 — X Button Not Clickable
+**Symptom:** The close button in the top-right doesn't respond to clicks.
+**Likely cause:** Same raycast blocker as Issue 1. An invisible UI element is intercepting the click before it reaches the button.
+**Fix:** Check Panel Image → Raycast Target should be OFF. Check Backdrop → should be ON but behind Panel in hierarchy.
+
+### Issue 3 — UI Rendering Order
+**Unity UI render order rule:** Objects are rendered in hierarchy order, top to bottom. Objects LOWER in the hierarchy list render ON TOP. So if Backdrop is below Panel in the hierarchy, Backdrop renders on top of Panel — which is wrong.
+
+**Correct hierarchy order inside MemoryReflect:**
+1. Backdrop (renders first = furthest back)
+2. Panel (renders on top of Backdrop)
+
+**Correct hierarchy order inside Panel:**
+1. Header
+2. ReplaceModeNotice
+3. MemoryCardContainer
+4. DetailPanel
+5. SlotCountText
+
+### Issue 4 — Panel Proportions Off
+**Symptom:** Panel appears too tall or not centred.
+**Fix:** Confirm Panel anchor is exactly (0.5, 0.5) to (0.5, 0.5) with Pivot (0.5, 0.5). If you see Left/Right/Top/Bottom fields instead of Pos X/Pos Y in the RectTransform, the anchors are set to stretch mode — hold Alt and click centre-centre in the anchor preset grid to reset.
+
+---
+
+---
+
+# PART 8 — MEMORY ASSETS CREATED
+
+All located in `Assets/_Game/ScriptableObjects/Memories/`
+
+| Asset Name | Title | Category | Emotional Weight | Notes |
+|-----------|-------|----------|-----------------|-------|
+| `MEM_SatByWater` | Sat by the water alone | Stillness | 0.6 | Uses lingerTime trigger |
+| `MEM_StoodOnHighGround` | Stood somewhere high and looked out | Wonder | 0.7 | |
+| `MEM_WalkedIntoRain` | Walked into the rain without shelter | Risk | 0.5 | |
+| `MEM_WatchedSunMove` | Watched the light change | Stillness | 0.4 | |
+| `MEM_FoundHiddenPlace` | Found somewhere nobody else knew | Solitude | 0.8 | |
+
+---
+
+---
+
+# PART 9 — INPUT SYSTEM
+
+**Asset:** `Assets/_Game/Scripts/Core/PlayerInputActions`
+Input Action Asset with C# class auto-generated (Generate C# Class ticked in Inspector)
+
+**Action Map: Player**
+
+| Action | Type | Binding | Used By |
+|--------|------|---------|---------|
+| Move | Value / Vector2 | WASD + Arrow Keys | PlayerController, CameraController |
+| Look | Value / Vector2 | Mouse Delta | PlayerController |
+| Jump | Button | Space | PlayerController |
+| Interact | Button | E | MomentTrigger |
+| Reflect | Button | Tab | UIManager |
+
+---
+
+---
+
+# PART 10 — BUILD PHASES COMPLETE ROADMAP
+
+| Phase | Focus | Status | Depends On |
+|-------|-------|--------|------------|
+| 1 | Project setup, folder structure, scenes, GameManager, Git | ✅ Complete | — |
+| 2 | First-person player controller, weighted movement, camera bob | ✅ Complete | Phase 1 |
+| 3 | Memory system data layer — MemoryData, MemoryInstance, MemorySystem, MomentTrigger | ✅ Complete | Phase 1 |
+| 4 | Memory UI — slot HUD, moment prompts, reflection screen, replace mode | ⚠️ Mechanics working, UI layout issues to resolve | Phase 3 |
+| 5 | Emotional Response System — world reacts to what player has lived | 🔲 Pending | Phase 3, 4 |
+| 6 | Identity & Trait System — traits derived from memories, alter player | 🔲 Pending | Phase 3 |
+| 7 | Time System + World Echo — world shifts to reflect lived experience | 🔲 Pending | Phase 3, 5, 6 |
+| 8 | Ending & Reflection Sequence — memory collage, epilogue, finale | 🔲 Pending | All phases |
+
+**Rule:** Each phase should feel like something before moving to the next.
+
+---
+
+---
+
+# PART 11 — PRE-WIRED DEPENDENCIES & FUTURE HOOKS
+
+This section documents all the hooks, placeholders, and pre-built connections that exist in the codebase now but will be implemented in future phases. This is critical reading before touching any existing script.
+
+---
+
+## Hook 1 — World Tint (Phase 7)
+
+**Where it lives:** `MemoryData.cs`
+```csharp
+public Color worldTintContribution = Color.white;
+```
+
+**What it does (future):** When Phase 7's World Echo System is built, it will iterate over all held memories via `MemorySystem.Instance.GetAllMemories()`, sum their `worldTintContribution` colours, and apply the result to the Global Post Processing Volume's Color Adjustments filter tint. The world will literally take on the colour palette of the player's lived experiences.
+
+**How to implement (Phase 7):**
+```csharp
+// WorldEchoSystem.cs will subscribe to MemorySystem.OnMemoriesChanged
+// then run something like:
+Color combinedTint = Color.white;
+foreach (var memory in MemorySystem.Instance.GetAllMemories())
+    combinedTint = Color.Lerp(combinedTint, memory.data.worldTintContribution, 0.3f);
+// Apply to postProcessVolume.profile ColorAdjustments filter tint
+```
+
+---
+
+## Hook 2 — Ambient Audio Layers (Phase 5 & 7)
+
+**Where it lives:** `MemoryData.cs`
+```csharp
+public AudioClip ambientLayer;
+```
+
+**What it does (future):** Each memory can unlock an additional audio layer in the ambient mix. Phase 5 builds the AudioManager with a layered mixing system. Phase 7 wires memories to specific audio layers so the soundscape evolves as the player accumulates experiences.
+
+**Planned implementation:** AudioManager will maintain a mixer with multiple audio sources. When `OnMemoryKept` fires, AudioManager checks the memory's `ambientLayer` clip and fades it into the mix. When `OnMemoryForgotten` fires, that layer fades out.
+
+---
+
+## Hook 3 — Identity Traits (Phase 6)
+
+**Where it lives:** `MemoryData.cs`
+```csharp
+public TraitType[] reinforcedTraits;
+public TraitType[] erodedTraits;
+```
+
+**What it does (future):** Phase 6 builds an `IdentitySystem` that subscribes to `MemorySystem.OnMemoryKept` and `OnMemoryForgotten`. It maintains a dictionary of `TraitType → float` values (0-1 scale). When memories are kept or forgotten, their reinforced/eroded traits shift accordingly.
+
+**How traits affect gameplay (Phase 6 planned effects):**
+
+| Trait | Effect on Player |
+|-------|-----------------|
+| Fearless | Increased jump height, no fall hesitation |
+| Fragile | Reduced jump, camera shakes near edges |
+| Curious | Moment trigger radius increases |
+| Calm | Look sensitivity decreases (more contemplative) |
+| Aware | Ambient sounds become richer |
+| Warm | World colour grading shifts warmer |
+| Agile | Walk speed increases slightly |
+| Melancholic | Time of day shifts toward dusk |
+| Resilient | Vividness of memories fades more slowly |
+| Open | New moment triggers become visible |
+
+**PlayerController will be modified in Phase 6** to read from `IdentitySystem.Instance.GetTraitValue(TraitType.Fearless)` etc. when calculating movement values. This is why movement values are Inspector-tunable now — trait modifiers will offset from these base values.
+
+---
+
+## Hook 4 — Memory Vividness (Phase 6 & 7)
+
+**Where it lives:** `MemoryInstance.cs`
+```csharp
+public float vividness = 1f;
+```
+
+**What it does (future):** Vividness starts at 1 when a memory is formed and slowly decreases over game time. Phase 7's TimeSystem will tick vividness down. Phase 6's IdentitySystem weights trait influence by vividness — a fresh memory has full identity impact, an old faded one has partial impact. Phase 4's UI will visually fade card opacity based on vividness.
+
+---
+
+## Hook 5 — hasBeenReflectedOn (Phase 8)
+
+**Where it lives:** `MemoryInstance.cs`
+```csharp
+public bool hasBeenReflectedOn = false;
+```
+
+**What it does (future):** Set to true when the player clicks a memory card in the reflection screen. Phase 8's ending sequence uses this to differentiate memories the player deliberately engaged with versus ones they passively accumulated. Reflected-on memories get more prominence in the ending collage.
+
+---
+
+## Hook 6 — GameState.Reflecting (Phase 4 onwards)
+
+**Where it lives:** `GameManager.cs`
+```csharp
+public enum GameState { Booting, Playing, Reflecting, Transitioning, Ending }
+```
+
+**Current use:** UIManager sets state to Reflecting when Tab is pressed. PlayerController checks `IsPlaying()` and stops processing input when Reflecting. This prevents movement while the memory screen is open.
+
+**Future use:** Phase 5's emotional response system will behave differently during Reflecting state — camera may subtly shift, post processing softens, ambient audio quiets. Phase 8 uses `GameState.Ending` to trigger the final sequence.
+
+---
+
+## Hook 7 — GetTotalEmotionalWeight (Phase 8)
+
+**Where it lives:** `MemorySystem.cs`
+```csharp
+public float GetTotalEmotionalWeight()
+```
+
+**What it does (future):** Returns the sum of all held memory emotional weights, adjusted for vividness. Phase 8 uses this to determine the emotional tone of the ending — high weight = heavy, meaningful reflection; low weight = lighter, more ambiguous ending.
+
+---
+
+## Hook 8 — HasMemoryOfCategory (Phase 5, 6, 7)
+
+**Where it lives:** `MemorySystem.cs`
+```csharp
+public bool HasMemoryOfCategory(MemoryCategory category)
+```
+
+**What it does (future):** Used by multiple future systems to check what kinds of experiences the player has had. Examples:
+- Phase 5: If player has a Stillness memory, ambient audio includes a quiet wind layer
+- Phase 7: If player has Risk memories, certain world locations show signs of their presence
+- Phase 8: Ending narration uses category composition to describe the life the player lived
+
+---
+
+## Phase 5 — Emotional Response System (Detail)
+
+**What it is:** The world reacts to what the player does and feels. Not through UI popups or points — through subtle environmental change.
+
+**Planned components:**
+- `EmotionalResponseSystem.cs` (persistent) — subscribes to MemorySystem events, drives post processing and audio
+- When a memory is kept: post processing profile shifts slightly toward that memory's `worldTintContribution`; a new audio layer fades in if one is assigned
+- When in a meaningful location: `Bloom` intensity increases subtly; time dilation (Time.timeScale briefly dips to 0.8) creates a felt sense of significance
+- Camera acknowledgement: CameraController gets a `TriggerEmotionalMoment()` method that causes a very gentle slow push-in
+
+**Post processing targets:**
+- Color Adjustments: Hue Shift, Saturation, Color Filter
+- Bloom: Intensity, Threshold
+- Vignette: Intensity
+- All driven by `VolumeProfile` API, not direct component access
+
+---
+
+## Phase 7 — Time System (Detail)
+
+**What it is:** Game time as a first-class system, not just a float in MemorySystem.
+
+**Planned `TimeSystem.cs` (persistent):**
+```csharp
+// Replaces MemorySystem.gameTime float
+// Tracks: current game day, time of day, season
+// Drives: sky/lighting changes, world state shifts
+// Ticks: MemoryInstance.vividness down over time
+// Events: OnDayChanged, OnSeasonChanged
+```
+
+**Time should not feel like a timer.** It passes gently. A full game cycle might be 60-90 minutes of real time. The player feels it through world changes, not countdowns.
+
+---
+
+## Phase 8 — Ending & Reflection Sequence (Detail)
+
+**What it is:** When the player decides they are done (or time runs its course), the game enters a reflection sequence.
+
+**Planned components:**
+- `EndingSystem.cs` reads: all held MemoryInstances, their vividness, hasBeenReflectedOn, the player's trait profile from IdentitySystem, total emotional weight
+- Generates a personalised memory collage — cards laid out in a slow sequence
+- Narration (text-based) reflects the life lived: categories of experience, what was kept, what was let go
+- No score. No grade. Just: *here is who you became.*
+- Different players see entirely different endings based on their choices
+
+---
+
+---
+
+# PART 12 — KNOWN ISSUES LOG
+
+| Issue | Severity | Status | Notes |
+|-------|----------|--------|-------|
+| Memory cards not visible in reflect screen | High | **OPEN — PRIORITY** | Cards spawn (confirmed via Console) but are not visible or clickable. Likely cause: UI_MemoryCard prefab text children have incorrect anchors or zero effective height, OR a layout conflict between the card's own sizing and the Content Vertical Layout Group. Debug by opening UI_MemoryCard prefab in isolation and confirming TitleText and CategoryText have non-zero rect height in prefab edit mode. Also confirm card root has no Vertical Layout Group — only the Content parent should have one. |
+| Close button not clickable | High | Resolved | Fixed by setting Panel Image Raycast Target to OFF |
+| Panel proportions inconsistent | Medium | Resolved | Fixed by setting Panel anchor to exact centre point (0.5,0.5)→(0.5,0.5) with Pivot (0.5,0.5) |
+| Tab key stopped opening reflect screen at one point | Medium | Resolved | Was input action binding lost — rebind Tab to Reflect action if recurs |
+| HUD dots flash on startup then disappear | Low | Resolved | Fixed with Invoke delay in MemorySlotHUD.Start() |
+| Moment prompt text persists after memory taken | Low | Resolved | HideMomentPrompt() now called in ExperienceMoment() |
+| Forgetting memory left reflect screen open | Low | Resolved | OnForgetPressed now calls CloseReflectScreen() |
+| DontDestroyOnLoad error on MemorySystem | Low | Resolved | Removed from child objects — root only |
+| isLingering compiler warning | Low | Resolved | Field removed, will re-add in Phase 4 UI progress indicator |
+
+---
+
+*Document version 3 — Updated mid Phase 4.*
+*Resolved: close button, panel proportions, HUD flash, prompt persistence, forget behaviour.*
+*Outstanding: Memory cards not rendering in reflect screen — see Known Issues for debug steps.*
+*Next action: Resolve memory card visibility before beginning Phase 5.*
