@@ -15,8 +15,11 @@ EditorBuildSettings:
     path: Assets/_Game/Scenes/Core/_Boot.unity
     guid: 2e47a1744ec5e3648901a29559dc52fe
   - enabled: 1
-    path: Assets/_Game/Scenes/Locations/Location_Opening.unity
+    path: Assets/_Game/Scenes/Locations/SANDBOX.unity
     guid: f623f940593757b488b9935816654471
+  - enabled: 1
+    path: Assets/_Game/Scenes/Locations/Chapter_01_Childhood.unity
+    guid: f08bdcc060ed2f04cafa109fd6ff8e77
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

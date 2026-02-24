@@ -182,6 +182,10 @@ PrefabInstance:
       propertyPath: postProcessVolume
       value: 
       objectReference: {fileID: 29569255}
+    - target: {fileID: 5588725170650609445, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
+      propertyPath: baseAmbientVolume
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7092749912766213977, guid: 9907cce6001cb1c4dadeb43e6dfe66a0, type: 3}
       propertyPath: m_Name
       value: --- SYSTEMS ---
