@@ -40,20 +40,21 @@ public class GameManager : MonoBehaviour
     // -------------------------------------------------------
     // AWAKE — runs once when this object first exists
     // -------------------------------------------------------
-    private void Awake()
+private void Awake()
+{
+    if (Instance != null && Instance != this)
     {
-        // Enforce singleton: if another GameManager exists, destroy this one
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-
-        // DontDestroyOnLoad means this object survives scene changes
-        DontDestroyOnLoad(gameObject);
+        Destroy(gameObject);
+        return;
     }
+
+    Instance = this;
+
+    // Move to root of hierarchy before calling DontDestroyOnLoad
+    // This handles cases where the scene is loaded additively
+    transform.SetParent(null);
+    DontDestroyOnLoad(gameObject);
+}
 
     // -------------------------------------------------------
     // PUBLIC METHODS — other scripts call these

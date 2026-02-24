@@ -107,25 +107,20 @@ public class IdentitySystem : MonoBehaviour
     // This means identity requires maintenance — you must
     // keep living certain ways to stay who you are
     // -------------------------------------------------------
-    private void Update()
+private void Update()
+{
+    if (neutralDriftRate <= 0f) return;
+
+    foreach (TraitType trait in System.Enum.GetValues(typeof(TraitType)))
     {
-        if (neutralDriftRate <= 0f) return;
+        float current = traitValues[trait];
+        float drifted = Mathf.MoveTowards(current, 0.5f,
+            neutralDriftRate * Time.deltaTime);
 
-        bool anyChanged = false;
-
-        foreach (TraitType trait in System.Enum.GetValues(typeof(TraitType)))
-        {
-            float current = traitValues[trait];
-            float drifted = Mathf.MoveTowards(current, 0.5f,
-                neutralDriftRate * Time.deltaTime);
-
-            if (!Mathf.Approximately(current, drifted))
-            {
-                traitValues[trait] = drifted;
-                anyChanged = true;
-            }
-        }
+        if (!Mathf.Approximately(current, drifted))
+            traitValues[trait] = drifted;
     }
+}
 
     // -------------------------------------------------------
     // INITIALISE — all traits start at 0.5 (neutral)
