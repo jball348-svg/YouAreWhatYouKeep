@@ -38,11 +38,45 @@ public class EndingUI : MonoBehaviour
     public Color closingColour  = new Color(0.03f, 0.03f, 0.04f);
 
     // -------------------------------------------------------
+    // AWAKE — register before anything else runs
+    // We use Awake instead of Start so this works even when
+    // the GameObject is inactive at scene load
+    // -------------------------------------------------------
+    private void Awake()
+    {
+        // Register with EndingSystem as soon as we exist
+        // EndingSystem persists across scenes so it will be available
+        if (EndingSystem.Instance != null)
+        {
+            EndingSystem.Instance.RegisterEndingUI(this);
+        }
+        else
+        {
+            // EndingSystem hasn't initialised yet — wait a frame and try again
+            StartCoroutine(RegisterWhenReady());
+        }
+    }
+
+    private IEnumerator RegisterWhenReady()
+    {
+        // Wait until EndingSystem.Instance exists
+        while (EndingSystem.Instance == null)
+            yield return null;
+
+        EndingSystem.Instance.RegisterEndingUI(this);
+        Debug.Log("[EndingUI] Registered with EndingSystem (delayed)");
+    }
+
+    // -------------------------------------------------------
     // SHOW PASSAGES
     // Called by EndingSystem — coroutine that runs the whole sequence
     // -------------------------------------------------------
     public IEnumerator ShowPassages(List<EndingPassage> passages)
     {
+        // Make sure canvas is visible
+        if (canvasGroup != null)
+            canvasGroup.alpha = 0f;
+
         // Fade in the ending UI itself
         yield return StartCoroutine(FadeCanvasGroup(canvasGroup, 0f, 1f, 1.5f));
 
@@ -124,6 +158,8 @@ public class EndingUI : MonoBehaviour
     private IEnumerator FadeCanvasGroup(CanvasGroup cg,
         float from, float to, float duration)
     {
+        if (cg == null) yield break;
+
         float elapsed = 0f;
         cg.alpha = from;
 

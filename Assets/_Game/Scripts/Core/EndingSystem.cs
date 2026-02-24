@@ -45,21 +45,37 @@ public class EndingSystem : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // REGISTRATION — called by EndingUI on Start
+    // -------------------------------------------------------
+    public void RegisterEndingUI(EndingUI ui)
+    {
+        endingUI = ui;
+        Debug.Log("[EndingSystem] EndingUI registered successfully");
+    }
+
+    // -------------------------------------------------------
     // PUBLIC — trigger from anywhere
     // -------------------------------------------------------
     public void TriggerEnding()
     {
         if (endingTriggered) return;
 
-        // Find UI references now — they exist in the current scene
-        endingUI = Object.FindFirstObjectByType<EndingUI>();
+        // Find MasterFade in the current scene
         masterFade = GameObject.Find("MasterFade")?.GetComponent<CanvasGroup>();
 
+        // If EndingUI wasn't registered via Start(), find it now (including inactive objects)
         if (endingUI == null)
-            Debug.LogWarning("[EndingSystem] EndingUI not found in scene");
+        {
+            endingUI = Object.FindFirstObjectByType<EndingUI>(FindObjectsInactive.Include);
+            if (endingUI != null)
+                Debug.Log("[EndingSystem] EndingUI found via fallback search");
+        }
+
+        if (endingUI == null)
+            Debug.LogError("[EndingSystem] EndingUI still not found. Make sure EndingUI.cs is attached to EndingScreen in the UICanvas > Screens hierarchy.");
 
         if (masterFade == null)
-            Debug.LogWarning("[EndingSystem] MasterFade not found in scene");
+            Debug.LogWarning("[EndingSystem] MasterFade not found. Make sure an object named exactly 'MasterFade' exists in the scene.");
 
         endingTriggered = true;
         Debug.Log("[EndingSystem] Ending triggered");
@@ -78,14 +94,21 @@ public class EndingSystem : MonoBehaviour
 
         List<EndingPassage> passages = EndingNarrator.GenerateEnding();
 
+        // Fade to black
         yield return StartCoroutine(FadeToBlack(fadeToBlackDuration));
 
+        // Sit in darkness briefly
         yield return new WaitForSeconds(pauseBeforePassages);
 
+        // Show ending passages
         if (endingUI != null)
         {
             endingUI.gameObject.SetActive(true);
             yield return StartCoroutine(endingUI.ShowPassages(passages));
+        }
+        else
+        {
+            Debug.LogError("[EndingSystem] Cannot show passages — EndingUI is null.");
         }
 
         yield return new WaitForSeconds(pauseAfterFinal);
@@ -98,7 +121,11 @@ public class EndingSystem : MonoBehaviour
     // -------------------------------------------------------
     private IEnumerator FadeToBlack(float duration)
     {
-        if (masterFade == null) yield break;
+        if (masterFade == null)
+        {
+            Debug.LogWarning("[EndingSystem] Skipping fade — MasterFade is null.");
+            yield break;
+        }
 
         float elapsed = 0f;
         masterFade.alpha = 0f;
