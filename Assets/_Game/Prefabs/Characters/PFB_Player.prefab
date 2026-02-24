@@ -153,6 +153,7 @@ GameObject:
   - component: {fileID: 3925995375180070620}
   - component: {fileID: 2734933314519135349}
   - component: {fileID: 1235798970725901755}
+  - component: {fileID: 2898755256821285383}
   m_Layer: 0
   m_Name: PlayerCamera
   m_TagString: MainCamera
@@ -287,6 +288,14 @@ MonoBehaviour:
   bobSmoothing: 8
   strafeTiltAmount: 1.5
   strafeTiltSmoothing: 6
+--- !u!81 &2898755256821285383
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6177463089824821927}
+  m_Enabled: 1
 --- !u!1 &8138918791964703847
 GameObject:
   m_ObjectHideFlags: 0

@@ -207,11 +207,16 @@ public class AudioManager : MonoBehaviour
     // -------------------------------------------------------
     // PUBLIC — called by EmotionalResponseSystem or directly
     // -------------------------------------------------------
-    public void TriggerMomentSting()
+public void TriggerMomentSting()
+{
+    if (momentStingSource != null && momentStingClip != null)
     {
-        if (momentStingSource != null && momentStingClip != null)
-            momentStingSource.Play();
+        // Set how many seconds into the clip to start
+        // Tweak this value until it hits the right moment
+        momentStingSource.time = 5f;
+        momentStingSource.Play();
     }
+}
 
     // Allows external systems to push a layer's volume temporarily
     // Used by EmotionalResponseSystem during intense moments

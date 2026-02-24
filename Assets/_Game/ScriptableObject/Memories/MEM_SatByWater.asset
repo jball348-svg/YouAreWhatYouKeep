@@ -16,9 +16,9 @@ MonoBehaviour:
   memoryDescription: The sound of it was enough. You didn't need anything else
   category: 7
   emotionalWeight: 0.6
-  worldTintContribution: {r: 0.504717, g: 0.8704037, b: 1, a: 1}
+  worldTintContribution: {r: 0.47058827, g: 0.8078432, b: 0.9294118, a: 1}
   ambientLayer: {fileID: 0}
-  reinforcedTraits: 
-  erodedTraits: 
+  reinforcedTraits: 0300000004000000
+  erodedTraits: 01000000
   memoryIcon: {fileID: 0}
   memoryColour: {r: 0.47058827, g: 0.8078432, b: 0.9294118, a: 1}

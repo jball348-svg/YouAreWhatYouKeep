@@ -42,6 +42,29 @@ public class PlayerController : MonoBehaviour
     [Tooltip("How far up/down the player can look (degrees)")]
     public float verticalLookClamp = 80f;
 
+
+// -------------------------------------------------------
+// TRAIT MODIFIERS
+// These define the maximum effect each trait can have
+// Actual effect = modifier * GetTraitStrength() (0-0.5 scale)
+// So at full trait strength, player gets half the modifier value
+// -------------------------------------------------------
+[Header("Trait Modifiers (Phase 6)")]
+[Tooltip("Extra speed added at full Agile trait")]
+public float agileSpeedBonus = 1.5f;
+
+[Tooltip("Extra jump force at full Fearless trait")]
+public float fearlessJumpBonus = 2f;
+
+[Tooltip("Speed reduction at full Fragile trait")]
+public float fragileSpeedPenalty = 0.8f;
+
+[Tooltip("Extra gravity at full Fragile trait — feels heavier")]
+public float fragileGravityBonus = 1.5f;
+
+[Tooltip("Jump force reduction at full Fragile trait")]
+public float fragileJumpPenalty = 1f;
+
     // -------------------------------------------------------
     // GROUND DETECTION
     // -------------------------------------------------------
@@ -103,6 +126,8 @@ public class PlayerController : MonoBehaviour
 
         HandleLook();
         CheckGrounded();
+
+
     }
 
     // -------------------------------------------------------
@@ -137,22 +162,39 @@ public class PlayerController : MonoBehaviour
     // -------------------------------------------------------
     // MOVEMENT — smooth acceleration and deceleration
     // -------------------------------------------------------
-    private void HandleMovement()
+private void HandleMovement()
+{
+    Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+    Vector3 worldDirection = transform.TransformDirection(inputDirection);
+
+    // Apply trait modifiers to walk speed
+    float effectiveSpeed = walkSpeed;
+
+    if (IdentitySystem.Instance != null)
     {
-        // Convert 2D input into 3D world direction relative to where player faces
-        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-        Vector3 worldDirection = transform.TransformDirection(inputDirection);
-        Vector3 targetVelocity = worldDirection * walkSpeed;
+        // Agile trait increases speed
+        float agileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Agile);
+        effectiveSpeed += agileSpeedBonus * agileStrength * 2f;
 
-        // Choose acceleration or deceleration rate based on whether moving
-        float rate = inputDirection.magnitude > 0.1f ? acceleration : deceleration;
+        // Fragile trait reduces speed slightly
+        float fragileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fragile);
+        effectiveSpeed -= fragileSpeedPenalty * fragileStrength * 2f;
 
-        // Smoothly move toward target velocity
-        currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, rate * Time.fixedDeltaTime);
-
-        // Apply to rigidbody — preserve Y velocity (gravity/jump)
-        rb.linearVelocity = new Vector3(currentVelocity.x, rb.linearVelocity.y, currentVelocity.z);
+        // Calm trait makes movement smoother — increases deceleration
+        float calmStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Calm);
+        // (calm affects feel, not speed — handled via higher effective deceleration)
     }
+
+    effectiveSpeed = Mathf.Max(1f, effectiveSpeed); // never go below 1
+
+    Vector3 targetVelocity = worldDirection * effectiveSpeed;
+    float rate = inputDirection.magnitude > 0.1f ? acceleration : deceleration;
+    currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity,
+        rate * Time.fixedDeltaTime);
+
+    rb.linearVelocity = new Vector3(currentVelocity.x, rb.linearVelocity.y,
+        currentVelocity.z);
+}
 
     // -------------------------------------------------------
     // JUMP
@@ -162,26 +204,50 @@ public class PlayerController : MonoBehaviour
         if (isGrounded)
             jumpRequested = true;
     }
-
-    private void HandleJump()
+private void HandleJump()
+{
+    if (jumpRequested)
     {
-        if (jumpRequested)
+        
+        float effectiveJumpForce = jumpForce;
+
+        if (IdentitySystem.Instance != null)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            jumpRequested = false;
+            float fearlessStrength = IdentitySystem.Instance
+                .GetTraitStrength(TraitType.Fearless);
+            effectiveJumpForce += fearlessJumpBonus * fearlessStrength * 2f;
+
+            float fragileStrength = IdentitySystem.Instance
+                .GetTraitStrength(TraitType.Fragile);
+            effectiveJumpForce -= (fragileJumpPenalty * fragileStrength * 2f);
         }
+
+        effectiveJumpForce = Mathf.Max(1f, effectiveJumpForce);
+        rb.AddForce(Vector3.up * effectiveJumpForce, ForceMode.VelocityChange);
+        jumpRequested = false;
     }
+}
 
     // -------------------------------------------------------
     // GRAVITY — extra downward force for weightier feel
     // -------------------------------------------------------
-    private void ApplyGravity()
+private void ApplyGravity()
+{
+    if (!isGrounded && rb.linearVelocity.y < 0)
     {
-        if (!isGrounded && rb.linearVelocity.y < 0)
+        float effectiveGravity = gravityMultiplier;
+
+        if (IdentitySystem.Instance != null)
         {
-            rb.AddForce(Vector3.down * gravityMultiplier, ForceMode.Acceleration);
+            // Fragile trait adds extra gravity — feels heavier, more vulnerable
+            float fragileStrength = IdentitySystem.Instance
+                .GetTraitStrength(TraitType.Fragile);
+            effectiveGravity += fragileGravityBonus * fragileStrength * 2f;
         }
+
+        rb.AddForce(Vector3.down * effectiveGravity, ForceMode.Acceleration);
     }
+}
 
     // -------------------------------------------------------
     // GROUND CHECK — small raycast downward from player's feet

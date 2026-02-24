@@ -107,30 +107,77 @@ public class EmotionalResponseSystem : MonoBehaviour
         Instance = this;
     }
 
-    private void Start()
+private void Start()
+{
+    if (postProcessVolume != null && postProcessVolume.profile != null)
     {
-        // Get post processing component references
-        if (postProcessVolume != null && postProcessVolume.profile != null)
-        {
-            postProcessVolume.profile.TryGet(out colorAdjustments);
-            postProcessVolume.profile.TryGet(out bloom);
-            postProcessVolume.profile.TryGet(out vignette);
-        }
-        else
-        {
-            Debug.LogWarning("[EmotionalResponseSystem] No post process volume assigned.");
-        }
+        postProcessVolume.profile.TryGet(out colorAdjustments);
+        postProcessVolume.profile.TryGet(out bloom);
+        postProcessVolume.profile.TryGet(out vignette);
 
-        // Set initial state
-        SetToBaseState();
-
-        // Subscribe to memory events
-        if (MemorySystem.Instance != null)
-        {
-            MemorySystem.Instance.OnMemoryKept += OnMemoryKept;
-            MemorySystem.Instance.OnMemoryForgotten += _ => RecalculateWorldState();
-        }
+            }
+    else
+    {
+    
     }
+
+    SetToBaseState();
+
+    if (MemorySystem.Instance != null)
+    {
+        MemorySystem.Instance.OnMemoryKept += OnMemoryKept;
+        MemorySystem.Instance.OnMemoryForgotten += _ => RecalculateWorldState();
+    }
+// Subscribe to identity threshold events
+if (IdentitySystem.Instance != null)
+{
+    IdentitySystem.Instance.OnTraitThresholdCrossed += OnTraitThresholdCrossed;
+}
+
+}
+
+private void OnTraitThresholdCrossed(TraitType trait, float value)
+{
+    // The world briefly reacts when the player becomes someone new
+    // Intensity scales with how high the threshold crossed
+    float intensity = value > 0.6f ? 0.8f : 0.4f;
+
+    PushEmotionalState(
+        saturationBoost: 15f * intensity,
+        bloomBoost: 0.6f * intensity,
+        duration: 2.5f
+    );
+
+    // Also boost the relevant audio layer if it exists
+    if (AudioManager.Instance != null)
+    {
+        // Map trait to closest category for audio boost
+        MemoryCategory? category = TraitToCategory(trait);
+        if (category.HasValue)
+            AudioManager.Instance.BoostLayer(category.Value, 0.3f, 3f);
+    }
+
+    }
+
+private MemoryCategory? TraitToCategory(TraitType trait)
+{
+    switch (trait)
+    {
+        case TraitType.Calm:
+        case TraitType.Aware:
+            return MemoryCategory.Stillness;
+        case TraitType.Curious:
+        case TraitType.Open:
+            return MemoryCategory.Wonder;
+        case TraitType.Fearless:
+        case TraitType.Resilient:
+            return MemoryCategory.Risk;
+        case TraitType.Melancholic:
+            return MemoryCategory.Solitude;
+        default:
+            return null;
+    }
+}
 
     private void OnDestroy()
     {
@@ -138,51 +185,50 @@ public class EmotionalResponseSystem : MonoBehaviour
         {
             MemorySystem.Instance.OnMemoryKept -= OnMemoryKept;
             MemorySystem.Instance.OnMemoryForgotten -= _ => RecalculateWorldState();
+
+if (IdentitySystem.Instance != null)
+    IdentitySystem.Instance.OnTraitThresholdCrossed -= OnTraitThresholdCrossed;
         }
     }
 
     // -------------------------------------------------------
     // UPDATE — smooth interpolation toward target state
     // -------------------------------------------------------
-    private void Update()
+private void Update()
+{
+    if (momentResponseActive) return;
+
+    float speed = transitionSpeed * Time.deltaTime;
+
+    if (colorAdjustments != null)
     {
-        if (momentResponseActive) return; // moment response controls PP directly
+        colorAdjustments.saturation.value = Mathf.Lerp(
+            colorAdjustments.saturation.value, targetSaturation, speed);
 
-        float speed = transitionSpeed * Time.deltaTime;
+        colorAdjustments.contrast.value = Mathf.Lerp(
+            colorAdjustments.contrast.value, targetContrast, speed);
 
-        if (colorAdjustments != null)
-        {
-            colorAdjustments.saturation.value = Mathf.Lerp(
-                colorAdjustments.saturation.value, targetSaturation, speed);
-
-            colorAdjustments.contrast.value = Mathf.Lerp(
-                colorAdjustments.contrast.value, targetContrast, speed);
-
-            colorAdjustments.colorFilter.value = Color.Lerp(
-                colorAdjustments.colorFilter.value, targetColourFilter, speed);
-        }
-
-        if (bloom != null)
-        {
-            bloom.intensity.value = Mathf.Lerp(
-                bloom.intensity.value, targetBloomIntensity, speed);
-        }
-
-        if (vignette != null)
-        {
-            vignette.intensity.value = Mathf.Lerp(
-                vignette.intensity.value, targetVignetteIntensity, speed);
-        }
+        colorAdjustments.colorFilter.value = Color.Lerp(
+            colorAdjustments.colorFilter.value, targetColourFilter, speed);
     }
+
+    if (bloom != null)
+        bloom.intensity.value = Mathf.Lerp(
+            bloom.intensity.value, targetBloomIntensity, speed);
+
+    if (vignette != null)
+        vignette.intensity.value = Mathf.Lerp(
+            vignette.intensity.value, targetVignetteIntensity, speed);
+}
 
     // -------------------------------------------------------
     // MEMORY EVENTS
     // -------------------------------------------------------
-    private void OnMemoryKept(MemoryInstance memory)
-    {
+private void OnMemoryKept(MemoryInstance memory)
+{
         RecalculateWorldState();
-        TriggerMomentResponse(memory);
-    }
+    TriggerMomentResponse(memory);
+}
 
     // -------------------------------------------------------
     // RECALCULATE WORLD STATE
@@ -225,7 +271,8 @@ public class EmotionalResponseSystem : MonoBehaviour
         }
 
         targetColourFilter = blendedTint;
-    }
+
+        }
 
     // -------------------------------------------------------
     // MOMENT RESPONSE

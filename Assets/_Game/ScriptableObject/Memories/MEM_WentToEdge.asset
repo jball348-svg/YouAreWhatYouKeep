@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: MEM_WentToEdge
   m_EditorClassIdentifier: Assembly-CSharp::MemoryData
   memoryTitle: Went to the edge
-  memoryDescription: You looked over the horizon
+  memoryDescription: You went somewhere you maybe shouldn't have
   category: 3
-  emotionalWeight: 0.6
+  emotionalWeight: 0.5
   worldTintContribution: {r: 0.80392164, g: 0.5647059, b: 0.59607846, a: 1}
   ambientLayer: {fileID: 0}
-  reinforcedTraits: 
-  erodedTraits: 
+  reinforcedTraits: 0000000008000000
+  erodedTraits: 0100000003000000
   memoryIcon: {fileID: 0}
   memoryColour: {r: 0.8396226, g: 0.59011215, b: 0.6224556, a: 1}

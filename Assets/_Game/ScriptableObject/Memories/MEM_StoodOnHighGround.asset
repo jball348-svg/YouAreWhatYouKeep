@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: MEM_StoodOnHighGround
   m_EditorClassIdentifier: Assembly-CSharp::MemoryData
   memoryTitle: Stood on High Ground
-  memoryDescription: You stood, and wondered
+  memoryDescription: You went up. You looked out. The scale of things changed for
+    a moment.
   category: 6
-  emotionalWeight: 0.6
+  emotionalWeight: 0.7
   worldTintContribution: {r: 0.5647059, g: 0.8039216, b: 0.620357, a: 1}
   ambientLayer: {fileID: 0}
-  reinforcedTraits: 
-  erodedTraits: 
+  reinforcedTraits: 000000000200000007000000
+  erodedTraits: 01000000
   memoryIcon: {fileID: 0}
   memoryColour: {r: 0.5647059, g: 0.80392164, b: 0.61960787, a: 1}

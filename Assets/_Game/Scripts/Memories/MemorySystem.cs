@@ -113,8 +113,7 @@ public class MemorySystem : MonoBehaviour
         OnMemoryKept?.Invoke(instance);
         OnMemoriesChanged?.Invoke();
 
-        Debug.Log($"[MemorySystem] Kept: {memoryData.memoryTitle} " +
-                  $"({heldMemories.Count}/{maxMemorySlots} slots used)");
+
     }
 
     // -------------------------------------------------------
@@ -140,8 +139,7 @@ public class MemorySystem : MonoBehaviour
             OnMemoryForgotten?.Invoke(memory);
             OnMemoriesChanged?.Invoke();
 
-            Debug.Log($"[MemorySystem] Forgot: {memory.Title}");
-        }
+                    }
     }
 
     // -------------------------------------------------------
