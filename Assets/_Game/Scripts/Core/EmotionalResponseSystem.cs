@@ -128,6 +128,13 @@ private void Start()
         MemorySystem.Instance.OnMemoryKept += OnMemoryKept;
         MemorySystem.Instance.OnMemoryForgotten += _ => RecalculateWorldState();
     }
+
+if (TimeSystem.Instance != null)
+{
+    TimeSystem.Instance.OnTimeOfDayUpdated += OnTimeOfDayUpdated;
+    TimeSystem.Instance.OnSeasonChanged += OnSeasonChanged;
+}
+
 // Subscribe to identity threshold events
 if (IdentitySystem.Instance != null)
 {
@@ -135,6 +142,59 @@ if (IdentitySystem.Instance != null)
 }
 
 }
+
+
+private void OnTimeOfDayUpdated(float dayProgress)
+{
+    if (colorAdjustments == null) return;
+
+    // Golden hour: warm amber push (morning 6-8, evening 17-19)
+    bool isGoldenHour = TimeSystem.Instance != null &&
+        TimeSystem.Instance.IsGoldenHour();
+
+    bool isNight = TimeSystem.Instance != null &&
+        TimeSystem.Instance.IsNight();
+
+    if (isGoldenHour)
+    {
+        // Nudge toward warm amber
+        Color goldenTint = new Color(1f, 0.92f, 0.7f);
+        targetColourFilter = Color.Lerp(targetColourFilter, goldenTint, 0.3f);
+        targetBloomIntensity = Mathf.Lerp(targetBloomIntensity,
+            baseBloomIntensity + 0.4f, 0.02f);
+    }
+    else if (isNight)
+    {
+        // Nudge toward cool blue
+        Color nightTint = new Color(0.7f, 0.8f, 1f);
+        targetColourFilter = Color.Lerp(targetColourFilter, nightTint, 0.2f);
+        targetSaturation = Mathf.Lerp(targetSaturation,
+            baseSaturation - 10f, 0.02f);
+    }
+}
+
+private void OnSeasonChanged(Season season)
+{
+    // Seasons subtly shift the base emotional tone
+    switch (season)
+    {
+        case Season.Spring:
+            PushEmotionalState(8f, 0.2f, 8f);   // fresh, hopeful
+            break;
+        case Season.Summer:
+            PushEmotionalState(15f, 0.3f, 8f);  // warm, full
+            break;
+        case Season.Autumn:
+            PushEmotionalState(-5f, 0.1f, 8f);  // fading, bittersweet
+            break;
+        case Season.Winter:
+            PushEmotionalState(-15f, 0f, 8f);   // quiet, sparse
+            break;
+    }
+
+    Debug.Log($"[EmotionalResponse] Season shift: {season}");
+}
+
 
 private void OnTraitThresholdCrossed(TraitType trait, float value)
 {
@@ -189,7 +249,15 @@ private MemoryCategory? TraitToCategory(TraitType trait)
 if (IdentitySystem.Instance != null)
     IdentitySystem.Instance.OnTraitThresholdCrossed -= OnTraitThresholdCrossed;
         }
+if (TimeSystem.Instance != null)
+{
+    TimeSystem.Instance.OnTimeOfDayUpdated -= OnTimeOfDayUpdated;
+    TimeSystem.Instance.OnSeasonChanged -= OnSeasonChanged;
+}
+
     }
+
+
 
     // -------------------------------------------------------
     // UPDATE — smooth interpolation toward target state

@@ -38,27 +38,47 @@ public class MemoryCardUI : MonoBehaviour
     // INITIALISE
     // Called by MemoryReflectUI when spawning cards
     // -------------------------------------------------------
-    public void Initialise(MemoryInstance memory, Action<MemoryInstance> selectionCallback)
-    {
-        BoundMemory = memory;
-        onSelected = selectionCallback;
+  public void Initialise(MemoryInstance memory, Action<MemoryInstance> selectionCallback)
+{
+    BoundMemory = memory;
+    onSelected = selectionCallback;
 
-        titleText.text = memory.Title;
-        categoryText.text = memory.Category.ToString().ToUpper();
+    titleText.text = memory.Title;
+    categoryText.text = memory.Category.ToString().ToUpper();
 
-        // Tint the accent bar with the memory's colour
-        accentBar.color = memory.MemoryColour;
+    accentBar.color = memory.MemoryColour;
 
-        // Subtle background tint
-        Color bgTint = memory.MemoryColour;
-        bgTint.a = 0.08f;
-        backgroundImage.color = bgTint;
+    Color bgTint = memory.MemoryColour;
+    bgTint.a = 0.08f;
+    backgroundImage.color = bgTint;
 
-        // Wire up click
-        button.onClick.AddListener(() => onSelected?.Invoke(BoundMemory));
+    button.onClick.AddListener(() => onSelected?.Invoke(BoundMemory));
 
-        SetSelected(false);
-    }
+    // Apply vividness to card appearance
+    ApplyVividness(memory.vividness);
+
+    SetSelected(false);
+}
+
+private void ApplyVividness(float vividness)
+{
+    // Fade text opacity with vividness
+    // Fresh memory: full opacity. Old faded memory: 50% opacity.
+    float alpha = Mathf.Lerp(0.5f, 1f, vividness);
+
+    Color titleCol = titleText.color;
+    titleCol.a = alpha;
+    titleText.color = titleCol;
+
+    Color catCol = categoryText.color;
+    catCol.a = alpha * 0.7f;
+    categoryText.color = catCol;
+
+    // Accent bar also fades slightly
+    Color accentCol = accentBar.color;
+    accentCol.a = Mathf.Lerp(0.4f, 1f, vividness);
+    accentBar.color = accentCol;
+}
 
     // -------------------------------------------------------
     // SELECTION STATE

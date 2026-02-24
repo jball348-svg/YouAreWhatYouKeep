@@ -142,6 +142,13 @@ public class MemorySystem : MonoBehaviour
                     }
     }
 
+
+// Add this method to MemorySystem.cs
+public void NotifyMemoriesChanged()
+{
+    OnMemoriesChanged?.Invoke();
+}
+
     // -------------------------------------------------------
     // PUBLIC: QUERIES
     // Other systems use these to read memory state
