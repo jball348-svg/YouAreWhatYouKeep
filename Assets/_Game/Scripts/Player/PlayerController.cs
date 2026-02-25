@@ -2,6 +2,10 @@
 // Handles all physical movement of the player through the world.
 // Designed to feel present and weighted, not snappy or gamey.
 // Communicates upward to GameManager to check if movement is allowed.
+//
+// FIXES:
+// - Wall sticking: zero-friction physics material applied at runtime
+// - Stair stepping: step-up raycast nudges player over low obstacles
 
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -19,16 +23,10 @@ public class PlayerController : MonoBehaviour
 
     // -------------------------------------------------------
     // MOVEMENT SETTINGS
-    // These are tunable in the Inspector — tweak until it feels right
     // -------------------------------------------------------
     [Header("Movement Feel")]
-    [Tooltip("How fast the player walks")]
     public float walkSpeed = 3.5f;
-
-    [Tooltip("How quickly the player reaches full speed")]
     public float acceleration = 8f;
-
-    [Tooltip("How quickly the player stops")]
     public float deceleration = 12f;
 
     [Header("Jump Feel")]
@@ -36,34 +34,33 @@ public class PlayerController : MonoBehaviour
     public float gravityMultiplier = 2.5f;
 
     [Header("Look Feel")]
-    [Tooltip("Mouse sensitivity")]
     public float lookSensitivity = 0.15f;
-
-    [Tooltip("How far up/down the player can look (degrees)")]
     public float verticalLookClamp = 80f;
 
+    // -------------------------------------------------------
+    // STEP CLIMBING
+    // Allows the player to walk up stairs and small obstacles
+    // without jumping. Tweak stepHeight to match your stair rise.
+    // -------------------------------------------------------
+    [Header("Step Climbing")]
+    [Tooltip("Maximum height the player can step up automatically — match to your stair rise height")]
+    public float stepHeight = 0.35f;
 
-// -------------------------------------------------------
-// TRAIT MODIFIERS
-// These define the maximum effect each trait can have
-// Actual effect = modifier * GetTraitStrength() (0-0.5 scale)
-// So at full trait strength, player gets half the modifier value
-// -------------------------------------------------------
-[Header("Trait Modifiers (Phase 6)")]
-[Tooltip("Extra speed added at full Agile trait")]
-public float agileSpeedBonus = 1.5f;
+    [Tooltip("How far ahead to check for a step obstacle")]
+    public float stepCheckDistance = 0.5f;
 
-[Tooltip("Extra jump force at full Fearless trait")]
-public float fearlessJumpBonus = 2f;
+    [Tooltip("How fast the player is pushed up over a step")]
+    public float stepSmooth = 8f;
 
-[Tooltip("Speed reduction at full Fragile trait")]
-public float fragileSpeedPenalty = 0.8f;
-
-[Tooltip("Extra gravity at full Fragile trait — feels heavier")]
-public float fragileGravityBonus = 1.5f;
-
-[Tooltip("Jump force reduction at full Fragile trait")]
-public float fragileJumpPenalty = 1f;
+    // -------------------------------------------------------
+    // TRAIT MODIFIERS
+    // -------------------------------------------------------
+    [Header("Trait Modifiers (Phase 6)")]
+    public float agileSpeedBonus = 1.5f;
+    public float fearlessJumpBonus = 2f;
+    public float fragileSpeedPenalty = 0.8f;
+    public float fragileGravityBonus = 1.5f;
+    public float fragileJumpPenalty = 1f;
 
     // -------------------------------------------------------
     // GROUND DETECTION
@@ -73,35 +70,46 @@ public float fragileJumpPenalty = 1f;
     public LayerMask groundLayer;
 
     // -------------------------------------------------------
-    // PRIVATE — internal state, not shown in Inspector
+    // PRIVATE
     // -------------------------------------------------------
     private Rigidbody rb;
+    private CapsuleCollider capsule;
     private PlayerInputActions inputActions;
     private Vector2 moveInput;
     private Vector2 lookInput;
     private float verticalLookAngle = 0f;
     private bool isGrounded;
     private bool jumpRequested;
-    private Vector3 currentVelocity; // used for smooth acceleration
+    private Vector3 currentVelocity;
 
     // -------------------------------------------------------
-    // AWAKE & ENABLE/DISABLE
+    // AWAKE
     // -------------------------------------------------------
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        capsule = GetComponent<CapsuleCollider>();
         inputActions = new PlayerInputActions();
 
-        // Lock and hide the cursor for first-person view
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        // FIX: Wall sticking
+        // Create a zero-friction, zero-bounce physics material at runtime
+        // and apply it to the capsule. This stops the player catching
+        // on walls and geometry when moving past or jumping next to them.
+        PhysicsMaterial frictionless = new PhysicsMaterial("PlayerFrictionless");
+        frictionless.staticFriction = 0f;
+        frictionless.dynamicFriction = 0f;
+        frictionless.bounciness = 0f;
+        frictionless.frictionCombine = PhysicsMaterialCombine.Minimum;
+        frictionless.bounceCombine = PhysicsMaterialCombine.Minimum;
+        capsule.material = frictionless;
     }
 
     private void OnEnable()
     {
         inputActions.Player.Enable();
-
-        // Subscribe to input events
         inputActions.Player.Jump.performed += OnJump;
     }
 
@@ -112,27 +120,22 @@ public float fragileJumpPenalty = 1f;
     }
 
     // -------------------------------------------------------
-    // UPDATE — runs every frame, handles input reading and look
+    // UPDATE
     // -------------------------------------------------------
     private void Update()
     {
-        // Don't process input if the game isn't in playing state
         if (GameManager.Instance != null && !GameManager.Instance.IsPlaying())
             return;
 
-        // Read movement and look values each frame
         moveInput = inputActions.Player.Move.ReadValue<Vector2>();
         lookInput = inputActions.Player.Look.ReadValue<Vector2>();
 
         HandleLook();
         CheckGrounded();
-
-
     }
 
     // -------------------------------------------------------
-    // FIXED UPDATE — physics movement happens here
-    // Unity's physics runs on a fixed timestep, not per-frame
+    // FIXED UPDATE
     // -------------------------------------------------------
     private void FixedUpdate()
     {
@@ -140,61 +143,93 @@ public float fragileJumpPenalty = 1f;
             return;
 
         HandleMovement();
+        HandleStepClimb();
         HandleJump();
         ApplyGravity();
     }
 
     // -------------------------------------------------------
-    // LOOK — rotates body left/right, camera root up/down
+    // LOOK
     // -------------------------------------------------------
     private void HandleLook()
     {
-        // Horizontal look: rotate the whole player body
         float horizontalLook = lookInput.x * lookSensitivity;
         transform.Rotate(Vector3.up * horizontalLook);
 
-        // Vertical look: tilt only the camera root
         verticalLookAngle -= lookInput.y * lookSensitivity;
         verticalLookAngle = Mathf.Clamp(verticalLookAngle, -verticalLookClamp, verticalLookClamp);
         cameraRoot.localEulerAngles = new Vector3(verticalLookAngle, 0f, 0f);
     }
 
     // -------------------------------------------------------
-    // MOVEMENT — smooth acceleration and deceleration
+    // MOVEMENT
     // -------------------------------------------------------
-private void HandleMovement()
-{
-    Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-    Vector3 worldDirection = transform.TransformDirection(inputDirection);
-
-    // Apply trait modifiers to walk speed
-    float effectiveSpeed = walkSpeed;
-
-    if (IdentitySystem.Instance != null)
+    private void HandleMovement()
     {
-        // Agile trait increases speed
-        float agileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Agile);
-        effectiveSpeed += agileSpeedBonus * agileStrength * 2f;
+        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+        Vector3 worldDirection = transform.TransformDirection(inputDirection);
 
-        // Fragile trait reduces speed slightly
-        float fragileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fragile);
-        effectiveSpeed -= fragileSpeedPenalty * fragileStrength * 2f;
+        float effectiveSpeed = walkSpeed;
 
-        // Calm trait makes movement smoother — increases deceleration
-        float calmStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Calm);
-        // (calm affects feel, not speed — handled via higher effective deceleration)
+        if (IdentitySystem.Instance != null)
+        {
+            float agileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Agile);
+            effectiveSpeed += agileSpeedBonus * agileStrength * 2f;
+
+            float fragileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fragile);
+            effectiveSpeed -= fragileSpeedPenalty * fragileStrength * 2f;
+        }
+
+        effectiveSpeed = Mathf.Max(1f, effectiveSpeed);
+
+        Vector3 targetVelocity = worldDirection * effectiveSpeed;
+        float rate = inputDirection.magnitude > 0.1f ? acceleration : deceleration;
+        currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, rate * Time.fixedDeltaTime);
+
+        rb.linearVelocity = new Vector3(currentVelocity.x, rb.linearVelocity.y, currentVelocity.z);
     }
 
-    effectiveSpeed = Mathf.Max(1f, effectiveSpeed); // never go below 1
+    // -------------------------------------------------------
+    // STEP CLIMBING
+    // Casts two raycasts ahead of the player:
+    //   Lower ray — detects an obstacle at foot level
+    //   Upper ray — checks there's clear space above the obstacle
+    // If lower hits and upper is clear, nudges the player upward
+    // so they step over it rather than stopping dead.
+    // -------------------------------------------------------
+    private void HandleStepClimb()
+    {
+        // Only step-climb when grounded and actually moving
+        if (!isGrounded) return;
 
-    Vector3 targetVelocity = worldDirection * effectiveSpeed;
-    float rate = inputDirection.magnitude > 0.1f ? acceleration : deceleration;
-    currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity,
-        rate * Time.fixedDeltaTime);
+        Vector3 moveDirection = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z).normalized;
+        if (moveDirection.magnitude < 0.1f) return;
 
-    rb.linearVelocity = new Vector3(currentVelocity.x, rb.linearVelocity.y,
-        currentVelocity.z);
-}
+        Vector3 playerFeet = transform.position;
+        Vector3 playerKnee = transform.position + Vector3.up * stepHeight;
+
+        // Lower ray: is there something at foot level ahead?
+        bool hitLow = Physics.Raycast(
+            playerFeet + Vector3.up * 0.05f,
+            moveDirection,
+            stepCheckDistance,
+            groundLayer
+        );
+
+        // Upper ray: is there clear space above that obstacle?
+        bool hitHigh = Physics.Raycast(
+            playerKnee,
+            moveDirection,
+            stepCheckDistance,
+            groundLayer
+        );
+
+        // Step up if we're blocked low but clear high
+        if (hitLow && !hitHigh)
+        {
+            rb.position += Vector3.up * stepSmooth * Time.fixedDeltaTime;
+        }
+    }
 
     // -------------------------------------------------------
     // JUMP
@@ -204,53 +239,49 @@ private void HandleMovement()
         if (isGrounded)
             jumpRequested = true;
     }
-private void HandleJump()
-{
-    if (jumpRequested)
+
+    private void HandleJump()
     {
-        
-        float effectiveJumpForce = jumpForce;
-
-        if (IdentitySystem.Instance != null)
+        if (jumpRequested)
         {
-            float fearlessStrength = IdentitySystem.Instance
-                .GetTraitStrength(TraitType.Fearless);
-            effectiveJumpForce += fearlessJumpBonus * fearlessStrength * 2f;
+            float effectiveJumpForce = jumpForce;
 
-            float fragileStrength = IdentitySystem.Instance
-                .GetTraitStrength(TraitType.Fragile);
-            effectiveJumpForce -= (fragileJumpPenalty * fragileStrength * 2f);
+            if (IdentitySystem.Instance != null)
+            {
+                float fearlessStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fearless);
+                effectiveJumpForce += fearlessJumpBonus * fearlessStrength * 2f;
+
+                float fragileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fragile);
+                effectiveJumpForce -= fragileJumpPenalty * fragileStrength * 2f;
+            }
+
+            effectiveJumpForce = Mathf.Max(1f, effectiveJumpForce);
+            rb.AddForce(Vector3.up * effectiveJumpForce, ForceMode.VelocityChange);
+            jumpRequested = false;
         }
-
-        effectiveJumpForce = Mathf.Max(1f, effectiveJumpForce);
-        rb.AddForce(Vector3.up * effectiveJumpForce, ForceMode.VelocityChange);
-        jumpRequested = false;
     }
-}
 
     // -------------------------------------------------------
-    // GRAVITY — extra downward force for weightier feel
+    // GRAVITY
     // -------------------------------------------------------
-private void ApplyGravity()
-{
-    if (!isGrounded && rb.linearVelocity.y < 0)
+    private void ApplyGravity()
     {
-        float effectiveGravity = gravityMultiplier;
-
-        if (IdentitySystem.Instance != null)
+        if (!isGrounded && rb.linearVelocity.y < 0)
         {
-            // Fragile trait adds extra gravity — feels heavier, more vulnerable
-            float fragileStrength = IdentitySystem.Instance
-                .GetTraitStrength(TraitType.Fragile);
-            effectiveGravity += fragileGravityBonus * fragileStrength * 2f;
-        }
+            float effectiveGravity = gravityMultiplier;
 
-        rb.AddForce(Vector3.down * effectiveGravity, ForceMode.Acceleration);
+            if (IdentitySystem.Instance != null)
+            {
+                float fragileStrength = IdentitySystem.Instance.GetTraitStrength(TraitType.Fragile);
+                effectiveGravity += fragileGravityBonus * fragileStrength * 2f;
+            }
+
+            rb.AddForce(Vector3.down * effectiveGravity, ForceMode.Acceleration);
+        }
     }
-}
 
     // -------------------------------------------------------
-    // GROUND CHECK — small raycast downward from player's feet
+    // GROUND CHECK
     // -------------------------------------------------------
     private void CheckGrounded()
     {
